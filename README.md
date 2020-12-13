@@ -7,7 +7,7 @@ Training this net should be solveable by using unsupervised learning.
 Second I'm going to train a net to classify compare results from input and output of the auto encoder using supervised learning.
 Finally I will try to train a "trading" agent (constructed from auto encoder, classifier and an additional net self). I give reinforcement learning a try.
 My personal target is to build a net, where I can throw some historical end of day data and watch how it would trade on other unknown test data beside the training data.
-Maybe the results are going to be BAD, maybe the results are going to be good. I don't know!
+The results will be BAD, but maybe the results surprise too. I don't know!
 
 Getting real stock market data can be a challenge.
 I will use the Tiingo data service to retrieve the end of day (EOD) historical data for training and testing purposes.
