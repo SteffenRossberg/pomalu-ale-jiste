@@ -8,7 +8,7 @@ It still supports REST and Websocket APIs to get the data as we need.
 Long story short, Tiingo seems to be simply: Geschleckte gut genug!
 Further details can be found here: https://api.tiingo.com
 
-# My way to go ...
+# my way to go ...
 First I want to create a simple auto encoder to memorize possible patterns in stock market data.
 Training this net should be solveable by using unsupervised learning.
 Second I'm going to train a net to classify compare results from input and output of the auto encoder using supervised learning.
