@@ -136,6 +136,8 @@ class DataProvider:
         relative_file_path = self.__ensure_cache_file_path(ticker, start_date)
         if not os.path.exists(relative_file_path) or not enable_cached_data:
             quotes = self.__load_from_provider(ticker, start_date, end_date)
+            if quotes is None:
+                return None
             quotes.to_csv(relative_file_path)
         quotes = pd.read_csv(relative_file_path)
         quotes['date'] = pd.to_datetime(quotes['date'], format='%Y-%m-%d')
@@ -152,7 +154,7 @@ class DataProvider:
         raw_json = self.__fetch_eod_data(ticker, start_date, end_date)
         if raw_json is None:
             return None
-        quotes = DataProvider.__parse_eod_data(raw_json)
+        quotes = DataProvider.__parse_eod_data(raw_json, ticker)
         if quotes is None:
             return None
         quotes = DataProvider.__enforce_data_types(quotes)
@@ -183,9 +185,9 @@ class DataProvider:
             return None
 
     @staticmethod
-    def __parse_eod_data(json):
+    def __parse_eod_data(json, ticker):
         if json is None or len(json) == 0:
-            print('NO DATA')
+            print(f'{ticker:5} - NO DATA')
             return None
         if 'detail' in json and 'Error' in json['detail']:
             print(json['detail'])
