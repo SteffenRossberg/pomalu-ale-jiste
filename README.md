@@ -16,7 +16,7 @@ It still supports REST and Websocket APIs to get the data as we need.
 Long story short, Tiingo seems to be simply - Geschleckte gut genug!
 Further details can be found here: https://api.tiingo.com
 
-# WARNING
+## WARNING
 Some events and data could be already priced into the historical data and may build a possible indicator to predict something in the future.
 The TRUE story is: The STOCK MARKET is a very COMPLEX and VOLATILE BEAST!
 There exists a myriad of factors, like events, data, crisises and even the actual place of the mond at this moment will influence the market, which may result in a HIGH LOSS or minimal gain of a particular stock.
@@ -25,5 +25,5 @@ YOU ARE SELF RESPONSIBLE FOR YOUR INVESTMENTS BASED ON YOUR OWN DECISIONS, NOT I
 
 The project and the resulting agent is just a simple TRIAL and ERROR, "I'll give it a try!" and will DEFINITELY NOT BEAT THE MARKET. It is just to play with some time series data...
 
-# DISCLAIMER
+## DISCLAIMER
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
