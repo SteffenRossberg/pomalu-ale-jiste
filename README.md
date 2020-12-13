@@ -1,5 +1,5 @@
 # pomalu, ale jistĕ ...
-... I want to play with PyTorch and Pandas to chew on some timeseries like stock market data.
+... I want to play with an AI framework, in this case PyTorch, to chew on some timeseries like stock market data.
 
 ## my way to go ...
 First I want to create a simple auto encoder to memorize possible patterns in stock market data.
