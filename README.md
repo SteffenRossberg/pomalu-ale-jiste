@@ -8,7 +8,7 @@ It still supports REST and Websocket APIs to get the data as we need.
 Long story short, Tiingo seems to be simply: Geschleckte gut genug!
 Further details can be found here: https://api.tiingo.com
 
-My way to go ...
+# My way to go ...
 First I want to create a simple auto encoder to memorize possible patterns in stock market data.
 Training this net should be solveable by using unsupervised learning.
 Second I'm going to train a net to classify compare results from input and output of the auto encoder using supervised learning.
@@ -16,7 +16,7 @@ Finally I will try to train a "trading" agent (constructed from auto encoder, cl
 My personal target is to build a net, where I can throw some historical end of day data and watch how it would trade on other unknown test data beside the training data.
 Maybe the results are going to be BAD, maybe the results are going to be good. I don't know!
 
-WARNING:
+# WARNING:
 Some events and data could be already priced into the historical data and may build a possible indicator to predict something in the future.
 The TRUE story is: The STOCK MARKET is a very COMPLEX and VOLATILE BEAST! There exists a myriad of factors, like events, data, crisises and even the actual place of the mond at this moment will influence the market, which may result in a HIGH LOSS or minimal gain of a particular stock.
 One thing is save, the project will NEVER BE the magic money maker to beat the stock market and it is NOT A WARRANTY FOR THE INVESTMENT DECISIONS YOU WILL MAKE!
