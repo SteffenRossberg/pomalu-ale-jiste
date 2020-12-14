@@ -10,14 +10,13 @@ class Gym:
         self.device = self.manager.device
 
     def train_auto_encoder(self, agent_name, agent, agent_optimizer, train_data, min_agent_loss,
-                           steps_to_wait=200, auto_encoder_batch_size=5000):
+                           steps_to_wait=100, batch_size=5000):
         objective = nn.MSELoss()
         steps = 0
         epoch = 0
         while True:
             epoch += 1
-            agent_loss = self.__train_auto_encoder_run(train_data, agent, agent_optimizer, objective,
-                                                       auto_encoder_batch_size)
+            agent_loss = self.__train_auto_encoder_run(train_data, agent, agent_optimizer, objective, batch_size)
             if agent_loss < min_agent_loss:
                 min_agent_loss = float(agent_loss)
                 steps = 0
@@ -25,8 +24,6 @@ class Gym:
                 self.manager.save_net(f'{agent_name}.encoder', agent.encoder, loss=min_agent_loss)
                 self.manager.save_net(f'{agent_name}.decoder', agent.decoder, loss=min_agent_loss)
                 print(f'{steps:4} - {agent_name}: {min_agent_loss:.7f} ... saved')
-            elif min_agent_loss < 0.0006:
-                return
             elif steps_to_wait > steps:
                 print(f'{steps:4} - {agent_name}: {agent_loss:.7f}')
                 steps += 1

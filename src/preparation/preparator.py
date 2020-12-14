@@ -1,4 +1,7 @@
 import numpy as np
+import time
+import threading
+from src.preparation.msethread import MseThread
 
 
 class DataPreparator:
@@ -9,6 +12,48 @@ class DataPreparator:
         min_value = data.min()
         data = (data - min_value) / (max_value - min_value)
         return np.array(data.tolist())
+
+    @staticmethod
+    def calculate_mse(x, y):
+        diff = x - y
+        diff = np.squeeze(diff, axis=0)
+        square = diff * diff
+        mse = np.mean(square, axis=(2, 3))
+        return mse
+
+    @staticmethod
+    def find_samples(data, sample_threshold, match_threshold):
+        x = data
+        all_indices = None
+        steps = 2000
+        threads = []
+
+        for i in range(0, len(x), steps):
+            x_part = x[i:i + (steps if len(x) - i > steps else len(x) - i)]
+            for j in range(0, len(x), steps):
+                y_part = x[j:j + (steps if len(x) - j > steps else len(x) - j)]
+                thread = MseThread(x_part, y_part, i, j, match_threshold)
+                threads.append(thread)
+
+        for thread in threads:
+            while len([t1 for t1 in filter(lambda t2: t2.isAlive(), threads)]) >= 8:
+                time.sleep(0.01)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+            all_indices = thread.indices if all_indices is None else np.concatenate((all_indices, thread.indices))
+
+        buckets = [[] for _ in range(len(x))]
+        for i in range(len(all_indices)):
+            index0 = all_indices[i][0]
+            index1 = all_indices[i][1]
+            buckets[index0].append([data[index1][0]])
+        all_samples = []
+        for bucket in filter(lambda b: len(b) > sample_threshold, buckets):
+            all_samples += bucket
+        result = np.array(all_samples, dtype=np.float32)
+        return result
 
     @staticmethod
     def calculate_signals(quotes):
