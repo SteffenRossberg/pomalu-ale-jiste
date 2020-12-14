@@ -55,8 +55,11 @@ for ticker, company in provider.tickers.items():
     else:
         all_sells = np.concatenate((all_sells, sells))
 print(f'Total: buys: {np.shape(all_buys)} - sells: {np.shape(all_sells)}')
+all_buys = DataPreparator.find_samples(all_buys, sample_threshold=5, match_threshold=0.002)
+all_sells = DataPreparator.find_samples(all_sells, sample_threshold=5, match_threshold=0.002)
+print(f'Filtered: buys: {np.shape(all_buys)} - sells: {np.shape(all_sells)}')
 
-# train buyer
+# train buyer auto encoder
 gym.train_auto_encoder('buyer', buyer, buyer_optimizer, all_buys, buyer_loss)
-# train seller
+# train seller auto encoder
 gym.train_auto_encoder('seller', seller, seller_optimizer, all_sells, seller_loss)
