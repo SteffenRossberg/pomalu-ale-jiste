@@ -21,15 +21,16 @@ class DataPreparator:
         return mse
 
     @staticmethod
-    def extract_unique_samples(all_buys, all_sells, match_threshold):
-        matches = DataPreparator.find_matches_by_mse(all_buys, all_sells, match_threshold)
-        buy_matches = [match[0] for match in matches]
-        sell_matches = [match[1] for match in matches]
-        x = [all_buys[i] for i in range(len(all_buys)) if i not in buy_matches]
-        y = [all_sells[i] for i in range(len(all_sells)) if i not in sell_matches]
-        filtered_buys = np.array(x, dtype=np.float32)
-        filtered_sells = np.array(y, dtype=np.float32)
-        return filtered_buys, filtered_sells
+    def extract_unique_samples(x, y, match_threshold, extract_both=True):
+        def extract(all_matches, samples, match_index):
+            matched_indices = set([match[match_index] for match in all_matches])
+            unique_samples = [samples[i] for i in range(len(samples)) if i not in matched_indices]
+            return np.array(unique_samples, dtype=np.float32)
+
+        matches = DataPreparator.find_matches_by_mse(x, y, match_threshold)
+        filtered_x = extract(matches, x, 0)
+        filtered_y = None if not extract_both else extract(matches, y, 1)
+        return filtered_x, filtered_y
 
     @staticmethod
     def find_samples(data, sample_threshold, match_threshold):

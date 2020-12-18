@@ -69,9 +69,12 @@ if not os.path.exists(samples_path):
     print(f'Total: buys: {np.shape(all_buys)} - sells: {np.shape(all_sells)}')
     unique_buys, unique_sells = DataPreparator.extract_unique_samples(all_buys, all_sells, match_threshold=0.002)
     print(f'Unique: buys: {np.shape(unique_buys)} - sells: {np.shape(unique_sells)}')
-    buys = DataPreparator.find_samples(unique_buys, sample_threshold=5, match_threshold=0.002)
-    sells = DataPreparator.find_samples(unique_sells, sample_threshold=5, match_threshold=0.002)
-    print(f'Filtered: buys: {np.shape(buys)} - sells: {np.shape(sells)}')
+    sample_buys = DataPreparator.find_samples(unique_buys, sample_threshold=2, match_threshold=0.003)
+    sample_sells = DataPreparator.find_samples(unique_sells, sample_threshold=2, match_threshold=0.003)
+    print(f'Samples: buys: {np.shape(sample_buys)} - sells: {np.shape(sample_sells)}')
+    buys, _ = DataPreparator.extract_unique_samples(sample_buys, all_none, match_threshold=0.001, extract_both=False)
+    sells, _ = DataPreparator.extract_unique_samples(sample_sells, all_none, match_threshold=0.001, extract_both=False)
+    print(f'Unique samples: buys: {np.shape(buys)} - sells: {np.shape(sells)}')
     np.savez_compressed(samples_path, buys=buys, sells=sells, none=all_none)
 samples_file = np.load(samples_path)
 buys = samples_file['buys']
@@ -94,9 +97,13 @@ classifier_none_features = all_none
 classifier_none_labels = [0 for _ in range(len(all_none))]
 classifier_none_labels = np.array(classifier_none_labels)
 
-# deactivate trained auto encoders parameters
+# reload buyer having best training result after training
+manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
 for parameter in classifier.buyer_auto_encoder.parameters():
     parameter.requires_grad = False
+
+# reload seller having best training result after training
+manager.load_net('seller.autoencoder', seller, seller_optimizer)
 for parameter in classifier.seller_auto_encoder.parameters():
     parameter.requires_grad = False
 
