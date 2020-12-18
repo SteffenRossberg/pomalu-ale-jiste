@@ -106,6 +106,11 @@ gym.train_classifier('trader', classifier, classifier_optimizer,
                      classifier_none_features, classifier_none_labels,
                      classifier_loss, max_steps=1000)
 
+# reload classifier having best training result after training
+manager.load_net('trader.classifier', classifier, classifier_optimizer)
+for parameter in classifier.parameters():
+    parameter.requires_grad = False
+
 # let's trade 5 years unseen data from Jan, 01 2016 till Dec, 31 2020
 start_date = '2016-01-01'
 end_date = '2020-12-31'

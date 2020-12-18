@@ -31,8 +31,8 @@ class Classifier(nn.Module):
         seller_prediction = self.seller_auto_encoder(features)
         buyer_mse = self.__calculate_mse(buyer_prediction, features)
         seller_mse = self.__calculate_mse(seller_prediction, features)
-        merged = self.__merge_mse(buyer_mse, seller_mse)
-        classification = self.classifier(merged)
+        merged_mse = self.__merge_mse(buyer_mse, seller_mse)
+        classification = self.classifier(merged_mse)
         return classification
 
     def _forward_unimplemented(self, *features: Any) -> None:
@@ -51,6 +51,5 @@ class Classifier(nn.Module):
     def __merge_mse(buyer_mse, seller_mse):
         seller_shape = seller_mse.shape
         seller_reshaped = seller_mse.reshape(seller_shape[1], seller_shape[0])
-        merged = torch.cat((buyer_mse, torch.t(seller_reshaped)), 1)
-        result = merged.reshape(merged.shape[0], merged.shape[1])
-        return result
+        merged_mse = torch.cat((buyer_mse, torch.t(seller_reshaped)), 1)
+        return merged_mse
