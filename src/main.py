@@ -67,24 +67,26 @@ if not os.path.exists(samples_path):
         else:
             all_none = np.concatenate((all_none, none))
     print(f'Total: buys: {np.shape(all_buys)} - sells: {np.shape(all_sells)}')
-    all_buys = DataPreparator.find_samples(all_buys, sample_threshold=5, match_threshold=0.002)
-    all_sells = DataPreparator.find_samples(all_sells, sample_threshold=5, match_threshold=0.002)
-    print(f'Filtered: buys: {np.shape(all_buys)} - sells: {np.shape(all_sells)}')
-    np.savez_compressed(samples_path, all_buys=all_buys, all_sells=all_sells, all_none=all_none)
+    unique_buys, unique_sells = DataPreparator.extract_unique_samples(all_buys, all_sells, match_threshold=0.002)
+    print(f'Unique: buys: {np.shape(unique_buys)} - sells: {np.shape(unique_sells)}')
+    buys = DataPreparator.find_samples(unique_buys, sample_threshold=5, match_threshold=0.002)
+    sells = DataPreparator.find_samples(unique_sells, sample_threshold=5, match_threshold=0.002)
+    print(f'Filtered: buys: {np.shape(buys)} - sells: {np.shape(sells)}')
+    np.savez_compressed(samples_path, buys=buys, sells=sells, none=all_none)
 samples_file = np.load(samples_path)
-all_buys = samples_file['all_buys']
-all_sells = samples_file['all_sells']
-all_none = samples_file['all_none']
+buys = samples_file['buys']
+sells = samples_file['sells']
+all_none = samples_file['none']
 
 # train buyer auto encoder
-gym.train_auto_encoder('buyer', buyer, buyer_optimizer, all_buys, buyer_loss)
+gym.train_auto_encoder('buyer', buyer, buyer_optimizer, buys, buyer_loss)
 
 # train seller auto encoder
-gym.train_auto_encoder('seller', seller, seller_optimizer, all_sells, seller_loss)
+gym.train_auto_encoder('seller', seller, seller_optimizer, sells, seller_loss)
 
 # prepare signaled features and labels
-classifier_features = np.concatenate((all_buys, all_sells))
-classifier_labels = [1 for _ in range(len(all_buys))] + [2 for _ in range(len(all_sells))]
+classifier_features = np.concatenate((buys, sells))
+classifier_labels = [1 for _ in range(len(buys))] + [2 for _ in range(len(sells))]
 classifier_labels = np.array(classifier_labels)
 
 # prepare none signaled features and labels
