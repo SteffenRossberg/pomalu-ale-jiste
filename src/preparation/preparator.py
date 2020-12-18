@@ -1,6 +1,5 @@
 import numpy as np
 import time
-import threading
 from src.preparation.msethread import MseThread
 
 
@@ -116,5 +115,13 @@ class DataPreparator:
     def filter_windows_by_signal(quotes, signal_column, window_column='window'):
         windows = quotes[quotes[signal_column] > 0][window_column].values
         windows = windows.tolist()
-        windows = np.array(windows)
+        windows = np.array(windows, dtype=np.float32)
+        return windows
+
+    @staticmethod
+    def filter_windows_without_signal(quotes, window_column='window', days=5):
+        non_signal_filter = ~(quotes['buy'] > 0) & ~(quotes['sell'] > 0)
+        windows = quotes[non_signal_filter][window_column][days:].values
+        windows = windows.tolist()
+        windows = np.array(windows, dtype=np.float32)
         return windows
