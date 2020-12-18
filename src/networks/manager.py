@@ -4,6 +4,7 @@ import torch.optim as optim
 from src.networks.encoder import Encoder
 from src.networks.decoder import Decoder
 from src.networks.autoencoder import AutoEncoder
+from src.networks.classifier import Classifier
 
 
 class NetManager:
@@ -46,3 +47,8 @@ class NetManager:
         auto_encoder = AutoEncoder(encoder, decoder).to(self.device)
         optimizer = optim.Adam(auto_encoder.parameters())
         return auto_encoder, optimizer
+
+    def create_classifier(self, buyer, seller):
+        agent = Classifier(buyer, seller).to(self.device)
+        optimizer = optim.Adam(agent.parameters())
+        return agent, optimizer
