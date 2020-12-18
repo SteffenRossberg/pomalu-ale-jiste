@@ -1,6 +1,5 @@
 import numpy as np
 import time
-import threading
 from src.preparation.msethread import MseThread
 
 
@@ -22,17 +21,41 @@ class DataPreparator:
         return mse
 
     @staticmethod
+    def extract_unique_samples(all_buys, all_sells, match_threshold):
+        matches = DataPreparator.find_matches_by_mse(all_buys, all_sells, match_threshold)
+        buy_matches = [match[0] for match in matches]
+        sell_matches = [match[1] for match in matches]
+        x = [all_buys[i] for i in range(len(all_buys)) if i not in buy_matches]
+        y = [all_sells[i] for i in range(len(all_sells)) if i not in sell_matches]
+        filtered_buys = np.array(x, dtype=np.float32)
+        filtered_sells = np.array(y, dtype=np.float32)
+        return filtered_buys, filtered_sells
+
+    @staticmethod
     def find_samples(data, sample_threshold, match_threshold):
-        x = data
+        matches = DataPreparator.find_matches_by_mse(data, data, match_threshold)
+        buckets = [[] for _ in range(len(data))]
+        for i in range(len(matches)):
+            index0 = matches[i][0]
+            index1 = matches[i][1]
+            buckets[index0].append([data[index1][0]])
+        all_samples = []
+        for bucket in filter(lambda b: len(b) > sample_threshold, buckets):
+            all_samples += bucket
+        result = np.array(all_samples, dtype=np.float32)
+        return result
+
+    @staticmethod
+    def find_matches_by_mse(x, y, mse_match_threshold):
         all_indices = None
         steps = 2000
         threads = []
 
         for i in range(0, len(x), steps):
             x_part = x[i:i + (steps if len(x) - i > steps else len(x) - i)]
-            for j in range(0, len(x), steps):
-                y_part = x[j:j + (steps if len(x) - j > steps else len(x) - j)]
-                thread = MseThread(x_part, y_part, i, j, match_threshold)
+            for j in range(0, len(y), steps):
+                y_part = y[j:j + (steps if len(y) - j > steps else len(y) - j)]
+                thread = MseThread(x_part, y_part, i, j, mse_match_threshold)
                 threads.append(thread)
 
         for thread in threads:
@@ -44,16 +67,7 @@ class DataPreparator:
             thread.join()
             all_indices = thread.indices if all_indices is None else np.concatenate((all_indices, thread.indices))
 
-        buckets = [[] for _ in range(len(x))]
-        for i in range(len(all_indices)):
-            index0 = all_indices[i][0]
-            index1 = all_indices[i][1]
-            buckets[index0].append([data[index1][0]])
-        all_samples = []
-        for bucket in filter(lambda b: len(b) > sample_threshold, buckets):
-            all_samples += bucket
-        result = np.array(all_samples, dtype=np.float32)
-        return result
+        return all_indices
 
     @staticmethod
     def calculate_signals(quotes):
@@ -116,5 +130,13 @@ class DataPreparator:
     def filter_windows_by_signal(quotes, signal_column, window_column='window'):
         windows = quotes[quotes[signal_column] > 0][window_column].values
         windows = windows.tolist()
-        windows = np.array(windows)
+        windows = np.array(windows, dtype=np.float32)
+        return windows
+
+    @staticmethod
+    def filter_windows_without_signal(quotes, window_column='window', days=5):
+        non_signal_filter = ~(quotes['buy'] > 0) & ~(quotes['sell'] > 0)
+        windows = quotes[non_signal_filter][window_column][days:].values
+        windows = windows.tolist()
+        windows = np.array(windows, dtype=np.float32)
         return windows
