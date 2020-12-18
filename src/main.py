@@ -103,3 +103,35 @@ gym.train_classifier('trader', classifier, classifier_optimizer,
                      classifier_features, classifier_labels,
                      classifier_none_features, classifier_none_labels,
                      classifier_loss, max_steps=1000)
+
+start_capital = 50_000.0
+capital = start_capital
+for ticker, company in provider.tickers.items():
+    quotes = provider.load(ticker, '2016-01-01', '2020-12-31')
+    quotes['window'] = DataPreparator.calculate_windows(quotes, days=days, normalize=True)
+    if quotes is None:
+        continue
+    count = 0
+    price = 0.0
+    for index, row in quotes.iterrows():
+        window = row['window']
+        if np.sum(window) == 0:
+            continue
+        features = torch.from_numpy(window).float().reshape(1, 1, days, 4).to(device)
+        prediction = classifier(features).cpu().detach().numpy()
+        action = np.argmax(prediction)
+        price = row['close']
+        if action == 1:
+            count = int(capital / price)
+            if count > 0:
+                capital -= 1.0
+                capital -= count * price
+                print(f'{row["date"]} - {ticker:5} - buy {count} x ${price:.2f} = $ {count * price:.2f}')
+        elif action == 2 and count > 0:
+            capital -= 1.0
+            capital += count * price
+            print(f'{row["date"]} - {ticker:5} - sell {count} x ${price:.2f} = $ {count * price:.2f}')
+    if count > 0:
+        capital -= 1.0
+        capital += count * price
+    print(f'{ticker:5} - {company:40} - ${capital:.2f}')
