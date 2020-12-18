@@ -43,6 +43,7 @@ class Classifier(nn.Module):
         diff = x - y
         diff = torch.squeeze(diff, dim=0)
         square = diff * diff
+        square = square.reshape(square.shape[0], 1, square.shape[-2], square.shape[-1])
         mse = torch.mean(square, dim=(2, 3))
         return mse
 
