@@ -106,15 +106,27 @@ gym.train_classifier('trader', classifier, classifier_optimizer,
                      classifier_none_features, classifier_none_labels,
                      classifier_loss, max_steps=1000)
 
+# let's trade 5 years unseen data from Jan, 01 2016 till Dec, 31 2020
+start_date = '2016-01-01'
+end_date = '2020-12-31'
 start_capital = 50_000.0
+capital_gains_tax = 25.0
+solidarity_surcharge = 5.5
+
 capital = start_capital
+tax_rate = capital_gains_tax / 100.0  # capital gains tax
+tax_rate += tax_rate * solidarity_surcharge / 100.0  # + solidarity surcharge
 for ticker, company in provider.tickers.items():
-    quotes = provider.load(ticker, '2016-01-01', '2020-12-31')
+    capital = start_capital
+    quotes = provider.load(ticker, start_date, end_date)
     quotes['window'] = DataPreparator.calculate_windows(quotes, days=days, normalize=True)
     if quotes is None:
         continue
     count = 0
     price = 0.0
+    if capital <= 0.0:
+        continue
+    last_capital = capital
     for index, row in quotes.iterrows():
         window = row['window']
         if np.sum(window) == 0:
@@ -123,7 +135,8 @@ for ticker, company in provider.tickers.items():
         prediction = classifier(features).cpu().detach().numpy()
         action = np.argmax(prediction)
         price = row['close']
-        if action == 1:
+        if action == 1 and count == 0 and capital > price + 1.0:
+            last_capital = capital
             count = int(capital / price)
             if count > 0:
                 capital -= 1.0
@@ -132,8 +145,13 @@ for ticker, company in provider.tickers.items():
         elif action == 2 and count > 0:
             capital -= 1.0
             capital += count * price
+            earnings = capital - last_capital
+            if earnings > 0.0:
+                tax = earnings * tax_rate
+                capital -= tax
             print(f'{row["date"]} - {ticker:5} - sell {count} x ${price:.2f} = $ {count * price:.2f}')
+            count = 0
     if count > 0:
         capital -= 1.0
         capital += count * price
-    print(f'{ticker:5} - {company:40} - ${capital:.2f}')
+    print(f'{ticker} - {company} - ${start_capital:.2f} -> ${capital:.2f} = {capital - start_capital:.2f}')
