@@ -4,10 +4,10 @@ from torch import nn as nn
 
 class AutoEncoder(nn.Module):
 
-    def __init__(self, enc, dec):
+    def __init__(self, encoder, decoder):
         super(AutoEncoder, self).__init__()
-        self.encoder = enc
-        self.decoder = dec
+        self.encoder = encoder
+        self.decoder = decoder
 
     def forward(self, features):
         code = self.encoder(features)
