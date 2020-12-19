@@ -40,7 +40,7 @@ Some events and data may already be priced into the historical data and form
 a possible indicator to predict something in the future.
 
 The TRUE story is:
-The EXCHANGE MARKET is a VERY COMPLEX AND A VOLATILE BEAST!
+The EXCHANGE MARKET is A VERY COMPLEX AND VOLATILE BEAST!
 There are a multitude of factors, such as events, data, crises, and even
 the current weather conditions at that moment can affect the market,
 resulting in a HUGE LOSS or minimal gain in the shares.
