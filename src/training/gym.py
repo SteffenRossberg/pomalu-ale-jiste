@@ -25,7 +25,7 @@ class Gym:
     def train_classifier(self, name, agent, optimizer,
                          signal_features, signal_labels,
                          none_signal_features, none_signal_labels,
-                         min_loss, max_steps=100, batch_size=5000):
+                         min_loss, max_steps=100, batch_size=50000):
 
         def save(manager, loss):
             manager.save_net(f'{name}.classifier', agent, optimizer, loss=loss)
