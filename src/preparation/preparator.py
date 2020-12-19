@@ -1,9 +1,53 @@
 import numpy as np
 import time
+import os
 from src.preparation.msethread import MseThread
 
 
 class DataPreparator:
+
+    @staticmethod
+    def prepare_samples(provider, days=5, start_date='2000-01-01', end_date='2015-12-31'):
+        all_buys = None
+        all_sells = None
+        all_none = None
+        samples_path = 'data/samples.npz'
+        if not os.path.exists(samples_path):
+            for ticker, company in provider.tickers.items():
+                # get data
+                quotes = provider.load(ticker, start_date, end_date)
+                if quotes is None:
+                    continue
+                # prepare data
+                quotes[['buy', 'sell']] = DataPreparator.calculate_signals(quotes)
+                quotes['window'] = DataPreparator.calculate_windows(quotes, days=days, normalize=True)
+                buys = DataPreparator.filter_windows_by_signal(quotes, 'buy', 'window')
+                sells = DataPreparator.filter_windows_by_signal(quotes, 'sell', 'window')
+                none = DataPreparator.filter_windows_without_signal(quotes, 'window', days=days)
+                print(f'{ticker:5} - {company:40} - buys: {np.shape(buys)} - sells: {np.shape(sells)}')
+
+                all_buys = buys if all_buys is None else np.concatenate((all_buys, buys))
+                all_sells = sells if all_sells is None else np.concatenate((all_sells, sells))
+                all_none = none if all_none is None else np.concatenate((all_none, none))
+
+            print(f'Total: buys: {np.shape(all_buys)} - sells: {np.shape(all_sells)}')
+            unique_buys, unique_sells = DataPreparator.extract_unique_samples(all_buys, all_sells,
+                                                                              match_threshold=0.002)
+            print(f'Unique: buys: {np.shape(unique_buys)} - sells: {np.shape(unique_sells)}')
+            sample_buys = DataPreparator.find_samples(unique_buys, sample_threshold=2, match_threshold=0.003)
+            sample_sells = DataPreparator.find_samples(unique_sells, sample_threshold=2, match_threshold=0.003)
+            print(f'Samples: buys: {np.shape(sample_buys)} - sells: {np.shape(sample_sells)}')
+            buys, _ = DataPreparator.extract_unique_samples(sample_buys, all_none, match_threshold=0.001,
+                                                            extract_both=False)
+            sells, _ = DataPreparator.extract_unique_samples(sample_sells, all_none, match_threshold=0.001,
+                                                             extract_both=False)
+            print(f'Unique samples: buys: {np.shape(buys)} - sells: {np.shape(sells)}')
+            np.savez_compressed(samples_path, buys=buys, sells=sells, none=all_none)
+        samples_file = np.load(samples_path)
+        buy_samples = samples_file['buys']
+        sell_samples = samples_file['sells']
+        none_samples = samples_file['none']
+        return buy_samples, sell_samples, none_samples
 
     @staticmethod
     def normalize_data(data):
