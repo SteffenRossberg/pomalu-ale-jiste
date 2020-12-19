@@ -153,7 +153,7 @@ for ticker, company in provider.tickers.items():
             if count > 0:
                 capital -= 1.0
                 capital -= count * price
-                print(f'{row["date"]} - {ticker:5} - buy {count} x ${price:.2f} = $ {count * price:.2f}')
+                print(f'{row["date"]} - {ticker:5} - buy  {count:5} x ${price:7.2f} = ${count * price:10.2f}')
         elif action == 2 and count > 0:
             capital -= 1.0
             capital += count * price
@@ -161,9 +161,10 @@ for ticker, company in provider.tickers.items():
             if earnings > 0.0:
                 tax = earnings * tax_rate
                 capital -= tax
-            print(f'{row["date"]} - {ticker:5} - sell {count} x ${price:.2f} = $ {count * price:.2f}')
+            print(f'{row["date"]} - {ticker:5} - sell {count:5} x ${price:7.2f} = ${count * price:10.2f}')
             count = 0
     if count > 0:
         capital -= 1.0
         capital += count * price
-    print(f'{ticker} - {company} - ${start_capital:.2f} -> ${capital:.2f} = {capital - start_capital:.2f}')
+    print(f'{ticker:5} {company:40} ${start_capital:10.2f} => ${capital:10.2f} = ${capital - start_capital:10.2f}')
+    # print(f'{ticker};{company};{start_capital:.2f};{capital:.2f};{capital - start_capital:.2f}')
