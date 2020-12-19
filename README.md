@@ -1,13 +1,17 @@
 # pomalu, ale jistĕ ...
+
 ... I want to play with an AI that uses the PyTorch framework to
 chew through some time series like stock prices.
 
-## my way to go ...
+## my way I will go ...
+
 First, I want to create a simple auto-encoder that remembers possible
 patterns in stock market data. Training this network should be solvable
 using unsupervised learning.
+
 Second, I will train a network to classify comparison results from input
 and output of the auto-encoder using supervised learning.
+
 Finally, I will attempt to train a "trader" agent, constructed from
 auto-encoder, classifier, and an additional network itself. I'll give
 reinforcement learning a try.
@@ -20,6 +24,7 @@ The results will DEFINITELY be BAD, but maybe the results will surprise.
 I don't know!
 
 ## the data ...
+
 Getting good stock market data can be a real challenge.
 I will use the Tiingo data service to retrieve historical end of day (EOD)
 data for training and testing purposes.
@@ -30,22 +35,23 @@ enough for this purpose.
 You can find more details here: https://api.tiingo.com
 
 ## WARNING
+
 Some events and data may already be priced into the historical data and form
 a possible indicator to predict something in the future.
 
 The TRUE story is:
-The EXCHANGE MARKET is a very COMPLEX and VOLATILE beast!
+The EXCHANGE MARKET is a VERY COMPLEX AND A VOLATILE BEAST!
 There are a multitude of factors, such as events, data, crises, and even
 the current weather conditions at that moment can affect the market,
 resulting in a HUGE LOSS or minimal gain in the shares.
-One thing is for sure, the project will NEVER be the magic money maker
+One thing is for sure, the project will NEVER BE the magic money maker
 to beat the stock market and it is NO GUARANTEE FOR THE INVESTMENT
 DECISIONS YOU MAKE YOURSELF! YOU ARE RESPONSIBLE FOR YOUR
 OWN INVESTMENTS BASED ON YOUR OWN DECISIONS, NOT ME OR
 THE SOFTWARE!
 
 The project and the resulting agent is just a simple TRIAL AND ERROR,
-true to the motto "I'll just try it out!" and will DEFINITELY NOT BEAT THE
+true to the motto "I'll just try it out!" and WILL DEFINITELY NOT BEAT THE
 MARKET. It's just to play with some historical time series data....
 
 ## DISCLAIMER
