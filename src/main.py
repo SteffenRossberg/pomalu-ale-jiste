@@ -10,22 +10,34 @@ from src.trading.trader import Trader
 if __name__ != "__main__":
     exit(0)
 
-# let's train 16 years data from Jan, 1. 2000 till Dec, 31. 2015
+# Let's train data of 16 years from 01/01/2000 to 12/31/2015
 train_start_date = '2000-01-01'
 train_end_date = '2015-12-31'
-# let's trade 5 years unseen data from Jan, 01 2016 till Dec, 31 2020
+# Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'
 trader_start_capital = 50_000.0
 trader_capital_gains_tax = 25.0
 trader_solidarity_surcharge = 5.5
-
-# use last 5 days as time frame for samples and prediction
+# Use the last 5 days as a time frame for sampling, forecasting and trading
 sample_days = 5
 
 # get the command line arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("--apikey", required=True, type=str, help="API key for Tiingo webservice")
+parser.add_argument("--apikey",
+                    required=True,
+                    type=str,
+                    help="API key for Tiingo webservice")
+parser.add_argument("--train_detectors",
+                    required=False,
+                    type=int,
+                    default=0,
+                    help="Train buyer/seller detectors (sample auto encoders)")
+parser.add_argument("--train_classifier",
+                    required=False,
+                    type=int,
+                    default=0,
+                    help="Train classifier")
 args = parser.parse_args()
 # use GPU if available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -40,11 +52,11 @@ manager = NetManager(device)
 print("Create gym ...")
 gym = Gym(manager)
 
-print("Create buyer ...")
+print("Create buyer auto encoder ...")
 buyer, buyer_optimizer = manager.create_auto_encoder(sample_days)
 buyer_loss = manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
 
-print("Create seller ...")
+print("Create seller auto encoder ...")
 seller, seller_optimizer = manager.create_auto_encoder(sample_days)
 seller_loss = manager.load_net('seller.autoencoder', seller, seller_optimizer)
 
@@ -66,42 +78,44 @@ buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(provide
                                                                          start_date=train_start_date,
                                                                          end_date=train_end_date)
 
-print("Train buyer samples detector ...")
-gym.train_auto_encoder('buyer', buyer, buyer_optimizer, buy_samples, buyer_loss)
+if args.train_detectors > 0:
+    print("Train buyer samples detector ...")
+    gym.train_auto_encoder('buyer', buyer, buyer_optimizer, buy_samples, buyer_loss)
 
-print("Train seller samples detector ...")
-gym.train_auto_encoder('seller', seller, seller_optimizer, sell_samples, seller_loss)
+    print("Train seller samples detector ...")
+    gym.train_auto_encoder('seller', seller, seller_optimizer, sell_samples, seller_loss)
 
-print("Prepare signed features and labels for trader classifier ...")
-classifier_features = np.concatenate((buy_samples, sell_samples))
-classifier_labels = [1 for _ in range(len(buy_samples))] + [2 for _ in range(len(sell_samples))]
-classifier_labels = np.array(classifier_labels)
+    print("Reload buyer samples detector with best training result after training ...")
+    manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
+    for parameter in classifier.buyer_auto_encoder.parameters():
+        parameter.requires_grad = False
 
-print("Prepare unsigned features and labels for trader classifier ...")
-classifier_none_features = none_samples
-classifier_none_labels = [0 for _ in range(len(none_samples))]
-classifier_none_labels = np.array(classifier_none_labels)
+    print("Reload seller samples detector with best training result after training ...")
+    manager.load_net('seller.autoencoder', seller, seller_optimizer)
+    for parameter in classifier.seller_auto_encoder.parameters():
+        parameter.requires_grad = False
 
-print("Reload buyer auto encoder having best training result after training ...")
-manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
-for parameter in classifier.buyer_auto_encoder.parameters():
-    parameter.requires_grad = False
+if args.train_classifier > 0:
+    print("Prepare signed features and labels for trader classifier ...")
+    classifier_features = np.concatenate((buy_samples, sell_samples))
+    classifier_labels = [1 for _ in range(len(buy_samples))] + [2 for _ in range(len(sell_samples))]
+    classifier_labels = np.array(classifier_labels)
 
-print("Reload seller auto encoder having best training result after training ...")
-manager.load_net('seller.autoencoder', seller, seller_optimizer)
-for parameter in classifier.seller_auto_encoder.parameters():
-    parameter.requires_grad = False
+    print("Prepare unsigned features and labels for trader classifier ...")
+    classifier_none_features = none_samples
+    classifier_none_labels = [0 for _ in range(len(none_samples))]
+    classifier_none_labels = np.array(classifier_none_labels)
 
-print("Train trader classifier ...")
-gym.train_classifier('trader', classifier, classifier_optimizer,
-                     classifier_features, classifier_labels,
-                     classifier_none_features, classifier_none_labels,
-                     classifier_loss, max_steps=1000)
+    print("Train trader classifier ...")
+    gym.train_classifier('trader', classifier, classifier_optimizer,
+                         classifier_features, classifier_labels,
+                         classifier_none_features, classifier_none_labels,
+                         classifier_loss, max_steps=1000)
 
-print("Reload trader classifier having best training result after training ...")
-manager.load_net('trader.classifier', classifier, classifier_optimizer)
-for parameter in classifier.parameters():
-    parameter.requires_grad = False
+    print("Reload classifier with best training result after training ...")
+    manager.load_net('trader.classifier', classifier, classifier_optimizer)
+    for parameter in classifier.parameters():
+        parameter.requires_grad = False
 
-print(f"Trade from {trader_start_date} till {trader_end_date} ...")
+print(f"Trade from {trader_start_date} to {trader_end_date} ...")
 trader.trade(classifier, trader_start_date, trader_end_date, False)
