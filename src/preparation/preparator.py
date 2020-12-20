@@ -7,7 +7,41 @@ from src.preparation.msethread import MseThread
 class DataPreparator:
 
     @staticmethod
-    def prepare_samples(provider, days=5, start_date='2000-01-01', end_date='2015-12-31'):
+    def prepare_samples(provider,
+                        days=5,
+                        start_date='2000-01-01',
+                        end_date='2015-12-31',
+                        sample_threshold=2,
+                        sample_match_threshold=0.003,
+                        buy_sell_match_threshold=0.002,
+                        filter_match_threshold=0.001):
+        """
+        Prepares categorized samples of stock price windows
+
+        Parameters
+        ----------
+        provider : DataProvider
+            DataProvider to retrieve stock prices
+        days : int, optional
+            size of time frame to form the samples, default: 5
+        start_date : str, optional
+            start date to generate samples from, e.g. '2000-12-31', default: '2000-01-01'
+        end_date : str, optional
+            end date to generate samples from, e.g. '2000-12-31', default: '2015-12-31'
+        sample_threshold : int, optional
+            how often should sample detected to decide it is a valid sample or not, default: 2
+        sample_match_threshold : float, optional
+            upper limit to decide, it is a valid sample or not, default: 0.003
+        buy_sell_match_threshold : float, optional
+            upper limit to decide, it is same sample of buy and sell or not, default: 0.002
+        filter_match_threshold : float, optional
+            upper limit to decide, it is a buy/sell sample and not a none signaled sample, default: 0.001
+
+        Returns
+        -------
+        buy_samples, sell_samples, none_samples
+        """
+
         all_buys = None
         all_sells = None
         all_none = None
@@ -31,15 +65,24 @@ class DataPreparator:
                 all_none = none if all_none is None else np.concatenate((all_none, none))
 
             print(f'Total: buys: {np.shape(all_buys)} - sells: {np.shape(all_sells)}')
-            unique_buys, unique_sells = DataPreparator.extract_unique_samples(all_buys, all_sells,
-                                                                              match_threshold=0.002)
+            unique_buys, unique_sells = DataPreparator.extract_unique_samples(all_buys,
+                                                                              all_sells,
+                                                                              match_threshold=buy_sell_match_threshold)
             print(f'Unique: buys: {np.shape(unique_buys)} - sells: {np.shape(unique_sells)}')
-            sample_buys = DataPreparator.find_samples(unique_buys, sample_threshold=2, match_threshold=0.003)
-            sample_sells = DataPreparator.find_samples(unique_sells, sample_threshold=2, match_threshold=0.003)
+            sample_buys = DataPreparator.find_samples(unique_buys,
+                                                      sample_threshold=sample_threshold,
+                                                      match_threshold=sample_match_threshold)
+            sample_sells = DataPreparator.find_samples(unique_sells,
+                                                       sample_threshold=sample_threshold,
+                                                       match_threshold=sample_match_threshold)
             print(f'Samples: buys: {np.shape(sample_buys)} - sells: {np.shape(sample_sells)}')
-            buys, _ = DataPreparator.extract_unique_samples(sample_buys, all_none, match_threshold=0.001,
+            buys, _ = DataPreparator.extract_unique_samples(sample_buys,
+                                                            all_none,
+                                                            match_threshold=filter_match_threshold,
                                                             extract_both=False)
-            sells, _ = DataPreparator.extract_unique_samples(sample_sells, all_none, match_threshold=0.001,
+            sells, _ = DataPreparator.extract_unique_samples(sample_sells,
+                                                             all_none,
+                                                             match_threshold=filter_match_threshold,
                                                              extract_both=False)
             print(f'Unique samples: buys: {np.shape(buys)} - sells: {np.shape(sells)}')
             np.savez_compressed(samples_path, buys=buys, sells=sells, none=all_none)
