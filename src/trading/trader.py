@@ -61,7 +61,7 @@ class Trader:
             message = f'{ticker:5} {company:40} '
             message += f'${self.start_capital:10.2f} => ${capital:10.2f} = ${capital - self.start_capital:10.2f}'
             # message = f'{ticker};{company};'
-            # message += f'{trader_start_capital:.2f};{capital:.2f};{capital - trader_start_capital:.2f}'
+            # message += f'{self.start_capital:.2f};{capital:.2f};{capital - self.start_capital:.2f}'
             self.report(message, True)
 
     @staticmethod
