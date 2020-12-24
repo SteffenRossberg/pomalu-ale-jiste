@@ -7,6 +7,24 @@ from src.preparation.msethread import MseThread
 class DataPreparator:
 
     @staticmethod
+    def prepare_rl_frames(provider, days=5, start_date='2000-01-01', end_date='2015-12-31'):
+        frames = []
+        for ticker, company in provider.tickers.items():
+            quotes = provider.load(ticker, start_date, end_date)
+            if quotes is None:
+                continue
+            quotes['window'] = DataPreparator.calculate_windows(quotes, days, normalize=True)
+            frames.append({
+                'ticker': ticker,
+                'company': company,
+                'dates': quotes['date'].values[days:].tolist(),
+                'windows': quotes['window'].values[days:].tolist(),
+                'prices': quotes['close'].values[days:].tolist(),
+                'pct_changes': quotes[['open', 'high', 'low', 'close']].pct_change(1).values[days:].tolist()
+            })
+        return frames
+
+    @staticmethod
     def prepare_samples(provider,
                         days=5,
                         start_date='2000-01-01',
