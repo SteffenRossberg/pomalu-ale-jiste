@@ -5,6 +5,7 @@ from src.networks.encoder import Encoder
 from src.networks.decoder import Decoder
 from src.networks.autoencoder import AutoEncoder
 from src.networks.classifier import Classifier
+from src.networks.decision_maker import DecisionMaker
 
 
 class NetManager:
@@ -50,5 +51,10 @@ class NetManager:
 
     def create_classifier(self, buyer, seller):
         agent = Classifier(buyer, seller).to(self.device)
+        optimizer = optim.Adam(agent.parameters())
+        return agent, optimizer
+
+    def create_decision_maker(self, classifier, state_size=6, action_size=3):
+        agent = DecisionMaker(classifier, state_size, action_size).to(self.device)
         optimizer = optim.Adam(agent.parameters())
         return agent, optimizer
