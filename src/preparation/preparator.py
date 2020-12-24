@@ -10,6 +10,7 @@ class DataPreparator:
     def prepare_rl_frames(provider, days=5, start_date='2000-01-01', end_date='2015-12-31'):
         frames = []
         for ticker, company in provider.tickers.items():
+            print(f'Loading {ticker:5} - {company} ...')
             quotes = provider.load(ticker, start_date, end_date)
             if quotes is None:
                 continue
