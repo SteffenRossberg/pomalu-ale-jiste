@@ -1,6 +1,8 @@
 import torch
 import numpy as np
+import random
 from torch import nn as nn
+from src.networks.target_net import TargetNet
 
 
 class Gym:
@@ -36,6 +38,9 @@ class Gym:
         objective = nn.CrossEntropyLoss()
         self.train(agent, optimizer, objective, signal_features, signal_labels, min_loss, max_steps, batch_size,
                    save, output, none_signal_features, none_signal_labels)
+
+    def train_decision_maker(self, name, model, optimizer, rl_frames, decision_maker_loss, epsilon=0.1):
+        pass
 
     def train(self, agent, optimizer, objective, features, labels, min_loss, max_steps, batch_size, save, output,
               none_features=None, none_labels=None):
