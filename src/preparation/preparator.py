@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import os
+import json
 from src.preparation.msethread import MseThread
 
 
@@ -8,21 +9,30 @@ class DataPreparator:
 
     @staticmethod
     def prepare_rl_frames(provider, days=5, start_date='2000-01-01', end_date='2015-12-31'):
-        frames = []
-        for ticker, company in provider.tickers.items():
-            print(f'Loading {ticker:5} - {company} ...')
-            quotes = provider.load(ticker, start_date, end_date)
-            if quotes is None:
-                continue
-            quotes['window'] = DataPreparator.calculate_windows(quotes, days, normalize=True)
-            frames.append({
-                'ticker': ticker,
-                'company': company,
-                'dates': quotes['date'].values[days:].tolist(),
-                'windows': quotes['window'].values[days:].tolist(),
-                'prices': quotes['close'].values[days:].tolist(),
-                'pct_changes': quotes[['open', 'high', 'low', 'close']].pct_change(1).values[days:].tolist()
-            })
+        frames_path = 'data/rl_frames.json'
+        columns = ['open', 'high', 'low', 'close']
+        if not os.path.exists(frames_path):
+            frames = []
+            for ticker, company in provider.tickers.items():
+                print(f'Loading {ticker:5} - {company} ...')
+                quotes = provider.load(ticker, start_date, end_date)
+                if quotes is None:
+                    continue
+                quotes['window'] = DataPreparator.calculate_windows(quotes, days, normalize=True)
+                frames.append({
+                    'ticker': ticker,
+                    'company': company,
+                    'dates': quotes['date'].dt.strftime('%Y-%m-%d').values[days:].tolist(),
+                    'windows': [window.tolist() for window in quotes['window'].values[days:]],
+                    'prices': quotes['close'].values[days:].tolist(),
+                    'pct_changes': [changes.tolist() for changes in quotes[columns].pct_change(1).values[days:]]
+                })
+            with open(frames_path, 'w') as outfile:
+                print(f'Saving {frames_path} ...')
+                json.dump(frames, outfile, indent=4)
+        with open(frames_path, 'r') as infile:
+            print(f'Loading {frames_path} ...')
+            frames = json.load(infile)
         return frames
 
     @staticmethod
