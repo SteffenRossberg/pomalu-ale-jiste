@@ -38,6 +38,11 @@ parser.add_argument("--train_classifier",
                     type=int,
                     default=0,
                     help="Train classifier")
+parser.add_argument("--train_decision_maker",
+                    required=False,
+                    type=int,
+                    default=0,
+                    help="Train decision maker")
 args = parser.parse_args()
 # use GPU if available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -64,6 +69,11 @@ print("Create classifier ...")
 classifier, classifier_optimizer = manager.create_classifier(buyer, seller)
 classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
 
+print("Create decision maker ...")
+# decision_maker, decision_optimizer = manager.create_decision_maker(classifier, state_size=sample_days + 1)
+decision_maker, decision_optimizer = manager.create_decision_maker(classifier, state_size=2)
+max_yield = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer, -100.0)
+
 print("Create trader ...")
 trader = Trader(trader_start_capital,
                 trader_capital_gains_tax,
@@ -78,6 +88,9 @@ buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(provide
                                                                          start_date=train_start_date,
                                                                          end_date=train_end_date)
 
+print("Prepare RL frames ...")
+rl_frames = DataPreparator.prepare_rl_frames(provider, days=5, start_date=train_start_date, end_date=train_end_date)
+
 if args.train_detectors > 0:
     print("Train buyer samples detector ...")
     gym.train_auto_encoder('buyer', buyer, buyer_optimizer, buy_samples, buyer_loss)
@@ -87,15 +100,18 @@ if args.train_detectors > 0:
 
     print("Reload buyer samples detector with best training result after training ...")
     manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
-    for parameter in classifier.buyer_auto_encoder.parameters():
-        parameter.requires_grad = False
 
     print("Reload seller samples detector with best training result after training ...")
     manager.load_net('seller.autoencoder', seller, seller_optimizer)
+
+if args.train_classifier > 0:
+    print("Deactivate buyer samples detector parameters ...")
+    for parameter in classifier.buyer_auto_encoder.parameters():
+        parameter.requires_grad = False
+    print("Deactivate seller samples detector parameters ...")
     for parameter in classifier.seller_auto_encoder.parameters():
         parameter.requires_grad = False
 
-if args.train_classifier > 0:
     print("Prepare signed features and labels for trader classifier ...")
     classifier_features = np.concatenate((buy_samples, sell_samples))
     classifier_labels = [1 for _ in range(len(buy_samples))] + [2 for _ in range(len(sell_samples))]
@@ -114,8 +130,25 @@ if args.train_classifier > 0:
 
     print("Reload classifier with best training result after training ...")
     manager.load_net('trader.classifier', classifier, classifier_optimizer)
+
+if args.train_decision_maker > 0:
+    print("Deactivate buyer samples detector parameters ...")
+    for parameter in classifier.buyer_auto_encoder.parameters():
+        parameter.requires_grad = False
+
+    print("Deactivate seller samples detector parameters ...")
+    for parameter in classifier.seller_auto_encoder.parameters():
+        parameter.requires_grad = False
+
+    print("Deactivate classifier parameters ...")
     for parameter in classifier.parameters():
         parameter.requires_grad = False
 
+    print("Train decision maker ...")
+    gym.train_decision_maker('trader', decision_maker, decision_optimizer, rl_frames, max_yield, 0.99, 1)
+
+    print("Reload decision maker with best training result after training ...")
+    manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
+
 print(f"Trade from {trader_start_date} to {trader_end_date} ...")
-trader.trade(classifier, trader_start_date, trader_end_date, False)
+trader.trade(decision_maker, trader_start_date, trader_end_date, False)

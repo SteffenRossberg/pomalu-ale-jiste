@@ -1,10 +1,44 @@
 import numpy as np
 import time
 import os
+import json
 from src.preparation.msethread import MseThread
 
 
 class DataPreparator:
+
+    @staticmethod
+    def prepare_rl_frames(provider, days=5, start_date='2000-01-01', end_date='2015-12-31'):
+        frames_path = 'data/rl_frames.json'
+        if not os.path.exists(frames_path):
+            frames = []
+            for ticker, company in provider.tickers.items():
+                print(f'Loading {ticker:5} - {company} ...')
+                quotes = provider.load(ticker, start_date, end_date)
+                if quotes is None:
+                    continue
+                quotes['window'] = DataPreparator.calculate_windows(quotes, days, normalize=True)
+                quotes['last_days'] = DataPreparator.calculate_last_days(quotes, days, normalize=True)
+                frames.append({
+                    'ticker': ticker,
+                    'company': company,
+                    'dates': quotes['date'].dt.strftime('%Y-%m-%d').values[days:].tolist(),
+                    'windows': [window.tolist() for window in quotes['window'].values[days:]],
+                    'prices': quotes['close'].values[days:].tolist(),
+                    'last_days': [last_days for last_days in quotes['last_days'].values[days:]]
+                })
+            with open(frames_path, 'w') as outfile:
+                print(f'Saving {frames_path} ...')
+                json.dump(frames, outfile, indent=4)
+        with open(frames_path, 'r') as infile:
+            print(f'Loading {frames_path} ...')
+            frames = json.load(infile)
+        return frames
+
+    @staticmethod
+    def calculate_changes(quotes):
+        columns = ['open', 'high', 'low', 'close']
+        return [changes.tolist() for changes in quotes[columns].pct_change(1).values]
 
     @staticmethod
     def prepare_samples(provider,
@@ -193,7 +227,13 @@ class DataPreparator:
         return quotes[['buy', 'sell']]
 
     @staticmethod
-    def calculate_windows(quotes, days=5, normalize=True):
+    def calculate_last_days(quotes, days=5, normalize=True):
+        last_days = DataPreparator.calculate_windows(quotes, days, normalize, ['close'])
+        last_days = [window.squeeze().tolist() for window in last_days.values]
+        return last_days
+
+    @staticmethod
+    def calculate_windows(quotes, days=5, normalize=True, columns=None):
 
         def do_not_normalize(window):
             return window
@@ -208,8 +248,9 @@ class DataPreparator:
                       else normalize_action(np.array([quotes[start:stop][columns].values], dtype=np.float32)))
             return window
 
+        if columns is None:
+            columns = ['open', 'high', 'low', 'close']
         quotes = quotes.copy()
-        columns = ['open', 'high', 'low', 'close']
         quotes['index'] = range(len(quotes))
         windows = quotes.apply(build_window, axis=1)
         return windows
