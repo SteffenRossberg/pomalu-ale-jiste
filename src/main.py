@@ -70,10 +70,9 @@ classifier, classifier_optimizer = manager.create_classifier(buyer, seller)
 classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
 
 print("Create decision maker ...")
-decision_maker, decision_optimizer = manager.create_decision_maker(classifier,
-                                                                   state_size=6,
-                                                                   action_size=3)
-decision_maker_loss = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
+# decision_maker, decision_optimizer = manager.create_decision_maker(classifier, state_size=sample_days + 1)
+decision_maker, decision_optimizer = manager.create_decision_maker(classifier, state_size=2)
+max_yield = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer, -100.0)
 
 print("Create trader ...")
 trader = Trader(trader_start_capital,
@@ -146,8 +145,10 @@ if args.train_decision_maker > 0:
         parameter.requires_grad = False
 
     print("Train decision maker ...")
-    gym.train_decision_maker('decision_maker', decision_maker, decision_optimizer, rl_frames, decision_maker_loss)
-    pass
+    gym.train_decision_maker('trader', decision_maker, decision_optimizer, rl_frames, max_yield, 0.99, 1)
+
+    print("Reload decision maker with best training result after training ...")
+    manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
 
 print(f"Trade from {trader_start_date} to {trader_end_date} ...")
-trader.trade(classifier, trader_start_date, trader_end_date, False)
+trader.trade(decision_maker, trader_start_date, trader_end_date, False)

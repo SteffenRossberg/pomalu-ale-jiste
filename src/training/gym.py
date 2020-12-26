@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-import random
 from torch import nn as nn
 from src.networks.target_net import TargetNet
 
@@ -39,8 +38,122 @@ class Gym:
         self.train(agent, optimizer, objective, signal_features, signal_labels, min_loss, max_steps, batch_size,
                    save, output, none_signal_features, none_signal_labels)
 
-    def train_decision_maker(self, name, model, optimizer, rl_frames, decision_maker_loss, epsilon=0.1):
-        pass
+    def train_decision_maker(self,
+                             name,
+                             model,
+                             optimizer,
+                             rl_frames,
+                             max_yield,
+                             gamma=0.99,
+                             max_epochs=5,
+                             target_net_sync=1_000,
+                             start_investment=50_000):
+        def save(manager, loss_value):
+            manager.save_net(f'{name}.decision_maker', model, optimizer, loss=loss_value)
+
+        criterion = nn.MSELoss()
+        target_net = TargetNet(model)
+        epoch = 0
+        tax_rate = 0.25 * 1.055
+        fee = 1.0
+        step = 0
+        target_net.sync()
+        while epoch < max_epochs:
+            for frame in rl_frames:
+                dates = frame['dates']
+                prices = frame['prices']
+                windows = frame['windows']
+                last_days = frame['last_days']
+                buy_price = 0.0
+                sell_price = prices[0]
+                rewards = 0.0
+                investment = start_investment
+                count = 0
+                for index in range(len(prices)):
+                    optimizer.zero_grad()
+                    date = dates[index]
+                    price = prices[index]
+                    last_day = last_days[index][-1]
+                    window = torch.tensor([windows[index]], dtype=torch.float32, device=self.device)
+                    state = [((investment + count * price) / start_investment) - 1.0, last_day]
+                    expected_prediction = target_net.target_model(window, state=state).cpu()
+                    test_prediction = model(window, state=state).cpu()
+                    test_decision = np.argmax(test_prediction.detach().numpy())
+                    current_rewards = self.calculate_rewards(test_decision,
+                                                             count,
+                                                             buy_price,
+                                                             sell_price,
+                                                             price)
+                    if test_decision == 1 and count == 0:
+                        buy_price = price
+                        investment -= fee
+                        count = int(investment / buy_price)
+                        if count == 0:
+                            break
+                        investment -= count * buy_price
+                        message = f'{date} - {frame["ticker"]:5} - {frame["company"]:40} - '
+                        message += f'buy:  {count:5} x ${buy_price:7.2f} = ${count * buy_price:.2f}'
+                        print(message)
+                        sell_price = 0.0
+                    elif test_decision == 2 and count > 0:
+                        sell_price = price
+                        new_investment = Gym.calculate_investment(investment, count, buy_price, price, tax_rate)
+                        message = f'{date} - {frame["ticker"]:5} - {frame["company"]:40} - '
+                        message += f'sell: {count:5} x ${price:7.2f} = ${count * price:.2f} '
+                        message += f'(${new_investment - (count * buy_price + investment):.2f} / '
+                        message += f'{(new_investment / (count * buy_price + investment) - 1.0) * 100.0:.2f}%)'
+                        print(message)
+                        investment = new_investment
+                        count = 0
+                        buy_price = 0.0
+                    expected_prediction = expected_prediction.detach() * (gamma ** 2) + current_rewards
+                    loss = criterion(test_prediction, expected_prediction)
+                    loss.backward()
+                    optimizer.step()
+                    rewards += current_rewards
+                    step += 1
+                    if step % target_net_sync == 0:
+                        target_net.sync()
+                years = len(prices) / 250.0
+                investment += count * buy_price
+                current_yield = ((investment / start_investment) ** (1.0 / years) - 1.0) * 100.0
+                if current_yield > max_yield:
+                    max_yield = current_yield
+                    save(self.manager, max_yield)
+                message = f'{frame["ticker"]} - {frame["company"]} - '
+                message += f'rate of return: {(investment / start_investment - 1.0) * 100.0:6.2f}% - '
+                message += f'yield: {current_yield:6.2f}% p.a.'
+                print(message)
+            epoch += 1
+
+    @staticmethod
+    def calculate_rewards(decision,
+                          count,
+                          buy_price,
+                          sell_price,
+                          current_price):
+        reward = -10.0
+        if decision == 1:
+            if count == 0:
+                reward = (((current_price / sell_price) - 1.0) * -1.0) * 100.0
+        elif decision == 2:
+            if count > 0:
+                reward = ((current_price / buy_price) - 1.0) * 100.0
+        elif decision == 0:
+            if count == 0:
+                reward = (((current_price / sell_price) - 1.0) * -1.0) * 49.0
+            else:
+                reward = ((current_price / buy_price) - 1.0) * 49.0
+        return reward
+
+    @staticmethod
+    def calculate_investment(investment, count, buy_price, current_price, tax_rate):
+        investment -= 1.0
+        profit = ((count * current_price) - (count * buy_price))
+        if profit > 0.0:
+            profit *= (1.0 - tax_rate)
+        investment += count * buy_price + profit
+        return investment
 
     def train(self, agent, optimizer, objective, features, labels, min_loss, max_steps, batch_size, save, output,
               none_features=None, none_labels=None):
