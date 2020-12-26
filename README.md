@@ -20,7 +20,7 @@ My personal goal is to build an overall network that I can throw some
 historical end of day data into and observe how it would act alongside
 the training data on other unknown test data.
 
-The results will DEFINITELY be BAD, but maybe the results will surprise.
+The results will DEFINITELY be BAD, but perhaps the results will surprise.
 I don't know!
 
 ## the data ...
