@@ -5,25 +5,33 @@ from torch import nn as nn
 
 class DecisionMaker(nn.Module):
 
-    def __init__(self, classifier, state_size=6, action_size=3):
+    def __init__(self, classifier, state_size=2):
         super(DecisionMaker, self).__init__()
         self.classifier = classifier
-        in_features = state_size + action_size
-        self.decision_maker = nn.Sequential(
-            nn.Linear(in_features=in_features, out_features=in_features * 32),
-            nn.ReLU(),
-            nn.Linear(in_features=in_features * 32, out_features=in_features * 64),
-            nn.ReLU(),
-            nn.Linear(in_features=in_features * 64, out_features=action_size),
-            nn.Tanh()
+        action_size = 3  # none = 0, buy = 1, sell = 2
+        in_features = action_size + state_size
+        self.adv = nn.Sequential(
+            nn.Linear(in_features=in_features, out_features=512),
+            nn.Tanh(),
+            nn.Linear(in_features=512, out_features=512),
+            nn.Tanh(),
+            nn.Linear(in_features=512, out_features=3),
+        )
+        self.val = nn.Sequential(
+            nn.Linear(in_features=in_features, out_features=512),
+            nn.Tanh(),
+            nn.Linear(in_features=512, out_features=512),
+            nn.Tanh(),
+            nn.Linear(in_features=512, out_features=1),
         )
 
     def forward(self, features, **kwargs):
         classification = self.classifier(features)
-        state = torch.tensor(kwargs['state'], dtype=classification.dtype).to(classification.device)
+        state = torch.tensor([kwargs['state']], dtype=classification.dtype).to(classification.device)
         merged_classification = self.__merge_state(classification, state)
-        observation = self.decision_maker(merged_classification)
-        return observation
+        val = self.val(merged_classification)
+        adv = self.adv(merged_classification)
+        return val + adv - adv.mean(dim=3, keepdim=True)
 
     def _forward_unimplemented(self, *features: Any) -> None:
         pass

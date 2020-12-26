@@ -29,10 +29,10 @@ class NetManager:
             data['optimizer'] = optimizer.state_dict()
         torch.save(data, file_path)
 
-    def load_net(self, file_name, net, optimizer=None):
+    def load_net(self, file_name, net, optimizer=None, default_loss=100.0):
         os.makedirs(f'{self.data_directory}/networks', exist_ok=True)
         file_path = f'{self.data_directory}/networks/{file_name}.pt'
-        loss = 100.0
+        loss = default_loss
         if os.path.exists(file_path):
             data = torch.load(file_path)
             net.load_state_dict(data['net'])
@@ -54,7 +54,7 @@ class NetManager:
         optimizer = optim.Adam(agent.parameters())
         return agent, optimizer
 
-    def create_decision_maker(self, classifier, state_size=6, action_size=3):
-        agent = DecisionMaker(classifier, state_size, action_size).to(self.device)
-        optimizer = optim.Adam(agent.parameters())
+    def create_decision_maker(self, classifier, state_size=2):
+        agent = DecisionMaker(classifier, state_size=state_size).to(self.device)
+        optimizer = optim.Adam(agent.parameters(), lr=0.0001)
         return agent, optimizer
