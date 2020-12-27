@@ -59,7 +59,7 @@ class Gym:
         step = 0
         target_net.sync()
         while epoch < max_epochs:
-            for frame in rl_frames:
+            for ticker, frame in rl_frames.items():
                 dates = frame['dates']
                 prices = frame['prices']
                 windows = frame['windows']

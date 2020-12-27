@@ -33,7 +33,7 @@ class DataPreparator:
         with open(frames_path, 'r') as infile:
             print(f'Loading {frames_path} ...')
             frames = json.load(infile)
-        return frames
+        return {frame['ticker']: frame for frame in frames}
 
     @staticmethod
     def calculate_changes(quotes):
