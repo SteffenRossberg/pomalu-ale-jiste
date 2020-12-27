@@ -18,13 +18,14 @@ class StockExchange(gym.Env):
 
     def __init__(self,
                  frames,
+                 days,
                  reset_on_close=True,
                  random_offset_on_reset=True,
                  start_investment=DEFAULT_START_INVESTMENT,
                  trading_fees=DEFAULT_TRADING_FEES,
                  tax_rate=DEFAULT_TAX_RATE):
         self._frames = frames
-        self._state = PortfolioState(start_investment, trading_fees, tax_rate, reset_on_close)
+        self._state = PortfolioState(days, start_investment, trading_fees, tax_rate, reset_on_close)
         self._ticker = None
         self.np_random = None
         self.action_space = gym.spaces.Discrete(n=3)
@@ -73,4 +74,4 @@ class StockExchange(gym.Env):
     @classmethod
     def from_provider(cls, provider, days, start_date, end_date, **kwargs):
         frames = DataPreparator.prepare_rl_frames(provider, days, start_date, end_date)
-        return StockExchange(frames, **kwargs)
+        return StockExchange(frames, days, **kwargs)
