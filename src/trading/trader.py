@@ -28,12 +28,16 @@ class Trader:
             buy_price = 0.0
             for index, row in quotes.iterrows():
                 window = row['window']
-                last_day = row['last_days'][-1]
+                last_day_position = row['last_days'][-1]
                 if np.sum(window) == 0:
                     continue
-                state = [capital / self.start_capital - 1.0, last_day]
-                features = torch.tensor(window, dtype=torch.float32).reshape(1, 1, self.days, 4).to(self.device)
-                prediction = agent(features, state=state).cpu().detach().numpy()
+                price_window = np.array(window, dtype=np.float32).flatten()
+                investment_yield = capital / self.start_capital - 1.0
+                has_stocks = 1.0 if count > 0 else 0.0
+                state = np.array([investment_yield, has_stocks, last_day_position], dtype=np.float32)
+                features = np.append(price_window, state)
+                features = torch.tensor(features, dtype=torch.float32).reshape(1, len(features)).to(self.device)
+                prediction = agent(features).cpu().detach().numpy()
                 action = np.argmax(prediction)
                 price = row['close']
                 if action == 1 and count == 0 and capital > price + 1.0:

@@ -5,9 +5,11 @@ from torch import nn as nn
 
 class DecisionMaker(nn.Module):
 
-    def __init__(self, classifier, state_size=2):
+    def __init__(self, classifier, state_size=3, days=5):
         super(DecisionMaker, self).__init__()
         self.classifier = classifier
+        self.days = days
+        self.state_size = state_size
         action_size = 3  # none = 0, buy = 1, sell = 2
         in_features = action_size + state_size
         self.adv = nn.Sequential(
@@ -26,12 +28,21 @@ class DecisionMaker(nn.Module):
         )
 
     def forward(self, features, **kwargs):
-        classification = self.classifier(features)
-        state = torch.tensor([kwargs['state']], dtype=classification.dtype).to(classification.device)
-        merged_classification = self.__merge_state(classification, state)
+        classification_features = features[:, :features.shape[1] - self.state_size]
+        classification_features = classification_features.reshape(features.shape[0], 1, self.days, 4)
+        classification_features = classification_features.to(features.device)
+
+        state_features = features[:, -self.state_size:]
+        state_features = state_features.reshape(features.shape[0], 1, 1, self.state_size)
+        state_features = state_features.to(features.device)
+
+        classification = self.classifier(classification_features)
+        merged_classification = self.__merge_state(classification, state_features)
         val = self.val(merged_classification)
         adv = self.adv(merged_classification)
-        return val + adv - adv.mean(dim=3, keepdim=True)
+        observation = val + adv - adv.mean(dim=3, keepdim=True)
+        observation = observation.reshape(features.shape[0], 3)
+        return observation
 
     def _forward_unimplemented(self, *features: Any) -> None:
         pass

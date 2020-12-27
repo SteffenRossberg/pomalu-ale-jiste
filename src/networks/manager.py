@@ -54,7 +54,7 @@ class NetManager:
         optimizer = optim.Adam(agent.parameters())
         return agent, optimizer
 
-    def create_decision_maker(self, classifier, state_size=2):
+    def create_decision_maker(self, classifier, state_size=3):
         agent = DecisionMaker(classifier, state_size=state_size).to(self.device)
         optimizer = optim.Adam(agent.parameters(), lr=0.0001)
         return agent, optimizer
