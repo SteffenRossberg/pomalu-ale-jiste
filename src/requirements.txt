@@ -1,7 +1,9 @@
 python-dateutil
 requests
-numpy
-matplotlib
-pandas
-torch
 simplejson
+numpy==1.19.4
+matplotlib==3.3.3
+pandas==1.1.5
+torch==1.7.0
+ptan==0.7
+gym==0.18.0

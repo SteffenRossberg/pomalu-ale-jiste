@@ -6,6 +6,8 @@ from src.preparation.preparator import DataPreparator
 from src.networks.manager import NetManager
 from src.training.gym import Gym
 from src.trading.trader import Trader
+from src.environment.stock_exchange import StockExchange
+
 
 if __name__ != "__main__":
     exit(0)
@@ -71,8 +73,8 @@ classifier_loss = manager.load_net('trader.classifier', classifier, classifier_o
 
 print("Create decision maker ...")
 # decision_maker, decision_optimizer = manager.create_decision_maker(classifier, state_size=sample_days + 1)
-decision_maker, decision_optimizer = manager.create_decision_maker(classifier, state_size=2)
-max_yield = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer, -100.0)
+decision_maker, decision_optimizer = manager.create_decision_maker(classifier, state_size=3)
+best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer, -100.0)
 
 print("Create trader ...")
 trader = Trader(trader_start_capital,
@@ -87,9 +89,6 @@ buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(provide
                                                                          days=sample_days,
                                                                          start_date=train_start_date,
                                                                          end_date=train_end_date)
-
-print("Prepare RL frames ...")
-rl_frames = DataPreparator.prepare_rl_frames(provider, days=5, start_date=train_start_date, end_date=train_end_date)
 
 if args.train_detectors > 0:
     print("Train buyer samples detector ...")
@@ -144,8 +143,11 @@ if args.train_decision_maker > 0:
     for parameter in classifier.parameters():
         parameter.requires_grad = False
 
+    print("Prepare stock exchange environment ...")
+    stock_exchange = StockExchange.from_provider(provider, sample_days, train_start_date, train_end_date)
+
     print("Train decision maker ...")
-    gym.train_decision_maker('trader', decision_maker, decision_optimizer, rl_frames, max_yield, 0.99, 1)
+    gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
 
     print("Reload decision maker with best training result after training ...")
     manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
