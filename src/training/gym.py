@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch import nn as nn
-from src.networks.target_net import TargetNet
+from ptan.agent import TargetNet
 
 
 class Gym:
