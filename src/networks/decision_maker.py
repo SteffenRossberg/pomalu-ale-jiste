@@ -27,7 +27,7 @@ class DecisionMaker(nn.Module):
             nn.Linear(in_features=512, out_features=1),
         )
 
-    def forward(self, features, **kwargs):
+    def forward(self, features):
         classification_features = features[:, :features.shape[1] - self.state_size]
         classification_features = classification_features.reshape(features.shape[0], 1, self.days, 4)
         classification_features = classification_features.to(features.device)
