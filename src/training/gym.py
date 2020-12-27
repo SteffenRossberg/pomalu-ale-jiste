@@ -138,12 +138,14 @@ class Gym:
                 evaluation_states = np.array(evaluation_states, copy=False)
 
             if step_index % self.RL_EVAL_EVERY_STEP == 0:
-                mean_val = self.calc_values_of_states(evaluation_states, model)
+                mean_val = self.calculate_values_of_states(evaluation_states, model)
                 if best_mean_val is None or best_mean_val < mean_val:
                     if best_mean_val is not None:
                         print(f"{step_index}: Best mean value updated {best_mean_val:.7f} -> {mean_val:.7f}")
                     best_mean_val = mean_val
                     save(self.manager, best_mean_val)
+                else:
+                    print(f"{step_index}: Mean value {mean_val:.7f}")
 
             optimizer.zero_grad()
             batch = experience_buffer.sample(self.RL_BATCH_SIZE)
@@ -175,7 +177,7 @@ class Gym:
         expected_state_action_values = next_state_values.detach() * gamma + rewards_v
         return criterion(state_action_values, expected_state_action_values)
 
-    def calc_values_of_states(self, states, model):
+    def calculate_values_of_states(self, states, model):
         mean_values = []
         for batch in np.array_split(states, 64):
             mean_value = self.calculate_mean_value_of_states(batch, model)
