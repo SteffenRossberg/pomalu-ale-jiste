@@ -14,15 +14,19 @@ class DecisionMaker(nn.Module):
         in_features = action_size + state_size
         self.adv = nn.Sequential(
             nn.Linear(in_features=in_features, out_features=512),
+            nn.Dropout(0.2),
             nn.Tanh(),
             nn.Linear(in_features=512, out_features=512),
+            nn.Dropout(0.2),
             nn.Tanh(),
             nn.Linear(in_features=512, out_features=3),
         )
         self.val = nn.Sequential(
             nn.Linear(in_features=in_features, out_features=512),
+            nn.Dropout(0.2),
             nn.Tanh(),
             nn.Linear(in_features=512, out_features=512),
+            nn.Dropout(0.2),
             nn.Tanh(),
             nn.Linear(in_features=512, out_features=1),
         )

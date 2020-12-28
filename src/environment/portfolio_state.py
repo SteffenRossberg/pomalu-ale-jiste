@@ -20,6 +20,9 @@ class PortfolioState:
         self._investment = self._start_investment
         self._stock_count = 0
         self._buy_price = 0.0
+        self._sell_price = 0.0
+        self._top_price = 0.0
+        self._bottom_price = 0.0
 
     @property
     def investment(self):
@@ -64,34 +67,58 @@ class PortfolioState:
 
     def reset(self, frame, offset):
         self._frame = frame
+        self._investment = self._start_investment
         self._offset = offset
         self._stock_count = 0
         self._buy_price = 0.0
-        self._investment = self._start_investment
+        self._sell_price = self._frame['prices'][self._offset]
+        self._top_price = self._frame['prices'][self._offset]
+        self._bottom_price = self._frame['prices'][self._offset]
 
     def step(self, action):
         reward = 0.0
         done = False
         price = self._frame['prices'][self._offset]
-        if action == Actions.Buy and self._stock_count == 0:
-            count = int((self._investment - self.trading_fees) / price)
-            if count > 0:
-                reward -= 100.0 * (self.trading_fees / (count * price))
-                self._investment -= self.trading_fees
-                self._investment -= count * price
-                self._stock_count = count
-                self._buy_price = price
-        elif action == Actions.Sell and self._stock_count > 0:
-            reward -= 100.0 * (self.trading_fees / (self._stock_count * price))
-            reward += 100.0 * ((price - self._buy_price) / self._buy_price)
-            done |= self.reset_on_close
-            earnings = (price * self._stock_count) - (self._buy_price * self._stock_count)
-            if earnings > 0.0:
-                earnings *= 1.0 - self.tax_rate
-            self._investment += self._buy_price * self._stock_count
-            self._investment += earnings
-            self._stock_count = 0
-            self._buy_price = 0.0
+        if action == Actions.Buy:
+            if self._stock_count == 0:
+                count = int((self._investment - self.trading_fees) / price)
+                if count > 0:
+                    reward -= 100.0 * (self.trading_fees / (count * price))
+                    reward += 100.0 * ((self._sell_price - price) / price)
+                    self._investment -= self.trading_fees
+                    self._investment -= count * price
+                    self._stock_count = count
+                    self._buy_price = price
+                    self._sell_price = 0.0
+                    self._top_price = 0.0
+                    self._bottom_price = price
+        elif action == Actions.Sell:
+            if self._stock_count > 0:
+                reward -= 100.0 * (self.trading_fees / (self._stock_count * price))
+                reward += 100.0 * ((price - self._buy_price) / self._buy_price)
+                done |= self.reset_on_close
+                earnings = (price * self._stock_count) - (self._buy_price * self._stock_count)
+                if earnings > 0.0:
+                    earnings *= 1.0 - self.tax_rate
+                self._investment += self._buy_price * self._stock_count
+                self._investment += earnings
+                self._stock_count = 0
+                self._buy_price = 0.0
+                self._sell_price = price
+                self._top_price = price
+                self._bottom_price = 0.0
+        elif self._stock_count == 0:
+            if self._top_price > price:
+                reward += 100.0 * ((self._top_price - price) / price)
+            else:
+                reward -= 100.0 * ((price - self._top_price) / self._top_price)
+                self._top_price = price
+        elif self._stock_count > 0:
+            if price > self._bottom_price:
+                reward += 100.0 * ((price - self._bottom_price) / self._bottom_price)
+            else:
+                reward -= 100.0 * ((self._bottom_price - price) / price)
+                self._bottom_price = price
 
         self._offset += 1
         done |= self._offset >= len(self._frame['windows']) - self._days
