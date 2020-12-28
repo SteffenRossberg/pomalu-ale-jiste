@@ -32,9 +32,9 @@ class Trader:
                 if np.sum(window) == 0:
                     continue
                 price_window = np.array(window, dtype=np.float32).flatten()
-                investment_yield = capital / self.start_capital - 1.0
+                day_yield = quotes['close'][index] / quotes['close'][index - 1] - 1.0
                 has_stocks = 1.0 if count > 0 else 0.0
-                state = np.array([investment_yield, has_stocks, last_day_position], dtype=np.float32)
+                state = np.array([day_yield, has_stocks, last_day_position], dtype=np.float32)
                 features = np.append(price_window, state)
                 features = torch.tensor(features, dtype=torch.float32).reshape(1, len(features)).to(self.device)
                 prediction = agent(features).cpu().detach().numpy()
