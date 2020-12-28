@@ -11,16 +11,22 @@ class Classifier(nn.Module):
         self.seller_auto_encoder = seller_auto_encoder
         self.classifier = nn.Sequential(
             nn.Linear(in_features=2, out_features=32),
+            nn.Dropout(0.2),
             nn.ReLU(),
             nn.Linear(in_features=32, out_features=64),
+            nn.Dropout(0.2),
             nn.ReLU(),
             nn.Linear(in_features=64, out_features=128),
+            nn.Dropout(0.2),
             nn.ReLU(),
             nn.Linear(in_features=128, out_features=256),
+            nn.Dropout(0.2),
             nn.ReLU(),
             nn.Linear(in_features=256, out_features=512),
+            nn.Dropout(0.2),
             nn.ReLU(),
             nn.Linear(in_features=512, out_features=1024),
+            nn.Dropout(0.2),
             nn.ReLU(),
             nn.Linear(in_features=1024, out_features=3),
             nn.Tanh()
