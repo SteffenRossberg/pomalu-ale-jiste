@@ -22,7 +22,7 @@ class Gym:
         self.RL_EPSILON_STOP = 0.1
         self.RL_EPSILON_STEPS = 1_000_000
         self.RL_REWARD_STEPS = 2
-        self.RL_MAX_STEPS = 500_000
+        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 100
 
     def train_auto_encoder(self, name, agent, optimizer, features, min_loss, max_steps=100, batch_size=5000):
 
@@ -123,8 +123,9 @@ class Gym:
 
         step_index = 0
         evaluation_states = None
+        learn_step = 0
 
-        while self.RL_MAX_STEPS > step_index:
+        while learn_step < self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE:
             step_index += 1
             experience_buffer.populate(1)
             selector.epsilon = max(self.RL_EPSILON_STOP, self.RL_EPSILON_START - step_index / self.RL_EPSILON_STEPS)
@@ -145,8 +146,10 @@ class Gym:
                         print(f"{step_index}: Best mean value updated {best_mean_val:.7f} -> {mean_val:.7f}")
                     best_mean_val = mean_val
                     save(self.manager, best_mean_val)
+                    learn_step = 0
                 else:
                     print(f"{step_index}: Mean value {mean_val:.7f}")
+                    learn_step += 1
 
             optimizer.zero_grad()
             batch = experience_buffer.sample(self.RL_BATCH_SIZE)

@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from src.preparation.preparator import DataPreparator
+import datetime
 
 
 class Trader:
@@ -16,6 +17,7 @@ class Trader:
     def trade(self, agent, start_date='2016-01-01', end_date='2020-12-31', report_each_trade=True):
         tax_rate = self.capital_gains_tax / 100.0
         tax_rate *= self.solidarity_surcharge / 100.0 + 1.0
+        result_csv_content = 'ticker;company;start_capital;end_capital;earnings'
         for ticker, company in self.stock_exchange.tickers.items():
             capital = self.start_capital
             quotes = self.stock_exchange.load(ticker, start_date, end_date)
@@ -69,9 +71,14 @@ class Trader:
                     capital -= tax
             message = f'{ticker:5} {company:40} '
             message += f'${self.start_capital:10.2f} => ${capital:10.2f} = ${capital - self.start_capital:10.2f}'
+            self.report(message, True)
             message = f'{ticker};{company};'
             message += f'{self.start_capital:.2f};{capital:.2f};{capital - self.start_capital:.2f}'
-            self.report(message, True)
+            result_csv_content += f'\n{message}'
+        today = datetime.datetime.now()
+        csv_file_path = f'data/trader.{today:%Y%m%d.%H%M%S}.csv'
+        with open(csv_file_path, 'wt') as csv:
+            csv.write(result_csv_content)
 
     @staticmethod
     def report(message, verbose):
