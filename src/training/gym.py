@@ -22,7 +22,7 @@ class Gym:
         self.RL_EPSILON_STOP = 0.1
         self.RL_EPSILON_STEPS = 1_000_000
         self.RL_REWARD_STEPS = 2
-        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 100
+        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 1_000
 
     def train_auto_encoder(self, name, agent, optimizer, features, min_loss, max_steps=100, batch_size=5000):
 
@@ -143,12 +143,12 @@ class Gym:
                 mean_val = self.calculate_values_of_states(evaluation_states, model)
                 if best_mean_val is None or best_mean_val < mean_val:
                     if best_mean_val is not None:
-                        print(f"{step_index}: Best mean value updated {best_mean_val:.7f} -> {mean_val:.7f}")
+                        print(f"{step_index:6}:{learn_step:4} Best mean value updated {best_mean_val:.7f} -> {mean_val:.7f}")
                     best_mean_val = mean_val
                     save(self.manager, best_mean_val)
                     learn_step = 0
                 else:
-                    print(f"{step_index}: Mean value {mean_val:.7f}")
+                    print(f"{step_index:6}:{learn_step:4} Mean value {mean_val:.7f}")
                     learn_step += 1
 
             optimizer.zero_grad()
