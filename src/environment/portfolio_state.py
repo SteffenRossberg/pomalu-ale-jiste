@@ -20,6 +20,7 @@ class PortfolioState:
         self._investment = self._start_investment
         self._stock_count = 0
         self._buy_price = 0.0
+        self._sell_price = 0.0
 
     @property
     def investment(self):
@@ -64,10 +65,11 @@ class PortfolioState:
 
     def reset(self, frame, offset):
         self._frame = frame
+        self._investment = self._start_investment
         self._offset = offset
         self._stock_count = 0
         self._buy_price = 0.0
-        self._investment = self._start_investment
+        self._sell_price = self._frame['prices'][self._offset]
 
     def step(self, action):
         reward = 0.0
@@ -77,10 +79,12 @@ class PortfolioState:
             count = int((self._investment - self.trading_fees) / price)
             if count > 0:
                 reward -= 100.0 * (self.trading_fees / (count * price))
+                reward += 100.0 * ((self._sell_price - price) / price)
                 self._investment -= self.trading_fees
                 self._investment -= count * price
                 self._stock_count = count
                 self._buy_price = price
+                self._sell_price = 0.0
         elif action == Actions.Sell and self._stock_count > 0:
             reward -= 100.0 * (self.trading_fees / (self._stock_count * price))
             reward += 100.0 * ((price - self._buy_price) / self._buy_price)
@@ -92,6 +96,7 @@ class PortfolioState:
             self._investment += earnings
             self._stock_count = 0
             self._buy_price = 0.0
+            self._sell_price = price
 
         self._offset += 1
         done |= self._offset >= len(self._frame['windows']) - self._days
