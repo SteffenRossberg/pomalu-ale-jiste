@@ -15,7 +15,7 @@ class Gym:
         self.RL_REPLAY_SIZE = 100_000
         self.RL_REPLAY_INITIAL = 10_000
         self.RL_STATES_TO_EVALUATE = 1_000
-        self.RL_EVAL_EVERY_STEP = 1_000
+        self.RL_EVAL_EVERY_STEP = 100
         self.RL_TARGET_NET_SYNC = 1_000
         self.RL_GAMMA = 0.99
         self.RL_EPSILON_START = 1.0
