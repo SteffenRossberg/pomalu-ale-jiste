@@ -157,4 +157,4 @@ if args.train_decision_maker > 0:
     manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
 
 print(f"Trade from {trader_start_date} to {trader_end_date} ...")
-trader.trade(decision_maker, trader_start_date, trader_end_date, True)
+trader.trade(decision_maker, trader_start_date, trader_end_date, False)
