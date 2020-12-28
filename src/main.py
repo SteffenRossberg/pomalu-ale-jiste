@@ -144,7 +144,11 @@ if args.train_decision_maker > 0:
         parameter.requires_grad = False
 
     print("Prepare stock exchange environment ...")
-    stock_exchange = StockExchange.from_provider(provider, sample_days, train_start_date, train_end_date)
+    stock_exchange = StockExchange.from_provider(provider,
+                                                 sample_days,
+                                                 train_start_date,
+                                                 train_end_date,
+                                                 reset_on_close=False)
 
     print("Train decision maker ...")
     gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
@@ -153,4 +157,4 @@ if args.train_decision_maker > 0:
     manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
 
 print(f"Trade from {trader_start_date} to {trader_end_date} ...")
-trader.trade(decision_maker, trader_start_date, trader_end_date, False)
+trader.trade(decision_maker, trader_start_date, trader_end_date, True)
