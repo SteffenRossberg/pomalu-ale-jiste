@@ -33,17 +33,17 @@ parser.add_argument("--apikey",
 parser.add_argument("--train_detectors",
                     required=False,
                     type=int,
-                    default=0,
+                    default=1,
                     help="Train buyer/seller detectors (sample auto encoders)")
 parser.add_argument("--train_classifier",
                     required=False,
                     type=int,
-                    default=0,
+                    default=1,
                     help="Train classifier")
 parser.add_argument("--train_decision_maker",
                     required=False,
                     type=int,
-                    default=0,
+                    default=1,
                     help="Train decision maker")
 args = parser.parse_args()
 # use GPU if available
