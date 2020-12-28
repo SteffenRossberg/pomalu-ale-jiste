@@ -87,7 +87,8 @@ class PortfolioState:
             done |= self.reset_on_close
             earnings = (price * self._stock_count) - (self._buy_price * self._stock_count)
             if earnings > 0.0:
-                earnings *= self.tax_rate
+                earnings *= 1.0 - self.tax_rate
+            self._investment += self._buy_price * self._stock_count
             self._investment += earnings
             self._stock_count = 0
             self._buy_price = 0.0
