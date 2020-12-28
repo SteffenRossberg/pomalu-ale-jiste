@@ -54,11 +54,10 @@ class PortfolioState:
         return self._days * 4 + 1 + 1 + 1,
 
     def encode(self):
-        investment = self._stock_count * self._frame['prices'][self._offset] + self._investment
-        investment_yield = investment / self._start_investment - 1.0
+        day_yield = self._frame['prices'][self._offset] / self._frame['prices'][self._offset - 1] - 1.0
         has_stocks = 1.0 if self._stock_count > 0 else 0.0
         last_day_position = self._frame['last_days'][self._offset][-1]
-        state = np.array([investment_yield, has_stocks, last_day_position], dtype=np.float32)
+        state = np.array([day_yield, has_stocks, last_day_position], dtype=np.float32)
         price_window = np.array(self._frame['windows'][self._offset], dtype=np.float32).flatten()
         encoded = np.append(price_window, state)
         return encoded
@@ -88,7 +87,8 @@ class PortfolioState:
             done |= self.reset_on_close
             earnings = (price * self._stock_count) - (self._buy_price * self._stock_count)
             if earnings > 0.0:
-                earnings *= self.tax_rate
+                earnings *= 1.0 - self.tax_rate
+            self._investment += self._buy_price * self._stock_count
             self._investment += earnings
             self._stock_count = 0
             self._buy_price = 0.0
