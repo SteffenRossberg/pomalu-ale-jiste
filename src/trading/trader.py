@@ -13,13 +13,17 @@ class Trader:
         self.stock_exchange = stock_exchange
         self.device = device
         self.days = days
+        self.tax_rate = self.capital_gains_tax / 100.0
+        self.tax_rate *= self.solidarity_surcharge / 100.0 + 1.0
 
-    def trade(self, agent, start_date='2016-01-01', end_date='2020-12-31', report_each_trade=True):
-        tax_rate = self.capital_gains_tax / 100.0
-        tax_rate *= self.solidarity_surcharge / 100.0 + 1.0
+    def trade(self, agent, start_date='2016-01-01', end_date='2020-12-31', report_each_trade=True, tickers=None):
+        if tickers is None:
+            tickers = self.stock_exchange.tickers
+        capital = 0.0
+        start_investment = self.start_capital / len(tickers)
         result_csv_content = 'ticker;company;start_capital;end_capital;earnings'
-        for ticker, company in self.stock_exchange.tickers.items():
-            capital = self.start_capital
+        for ticker, company in tickers.items():
+            investment = start_investment
             quotes = self.stock_exchange.load(ticker, start_date, end_date)
             if quotes is None:
                 continue
@@ -42,43 +46,90 @@ class Trader:
                 prediction = agent(features).cpu().detach().numpy()
                 action = np.argmax(prediction)
                 price = row['close']
-                if action == 1 and count == 0 and capital > price + 1.0:
-                    count = int(capital / price)
+                if action == 1 and count == 0 and investment > price + 1.0:
+                    count = int(investment / price)
                     if count > 0:
                         buy_price = price
-                        capital -= 1.0
-                        capital -= count * price
+                        investment -= 1.0
+                        investment -= count * price
                         message = f'{row["date"]} - {ticker:5} - buy  '
                         message += f'{count:5} x ${price:7.2f} = ${count * price:10.2f}'
                         self.report(message, report_each_trade)
                 elif action == 2 and count > 0:
-                    capital -= 1.0
-                    capital += count * price
+                    investment -= 1.0
+                    investment += count * price
                     earnings = (count * price) - (count * buy_price)
                     if earnings > 0.0:
-                        tax = earnings * tax_rate
-                        capital -= tax
+                        tax = earnings * self.tax_rate
+                        investment -= tax
                     message = f'{row["date"]} - {ticker:5} - sell '
                     message += f'{count:5} x ${price:7.2f} = ${count * price:10.2f}'
                     self.report(message, report_each_trade)
                     count = 0
             if count > 0:
-                capital -= 1.0
-                capital += count * price
+                investment -= 1.0
+                investment += count * price
                 earnings = (count * price) - (count * buy_price)
                 if earnings > 0.0:
-                    tax = earnings * tax_rate
-                    capital -= tax
+                    tax = earnings * self.tax_rate
+                    investment -= tax
+            capital += investment
             message = f'{ticker:5} {company:40} '
-            message += f'${self.start_capital:10.2f} => ${capital:10.2f} = ${capital - self.start_capital:10.2f}'
+            message += f'${start_investment:10.2f} => ${investment:10.2f} = ${investment - start_investment:10.2f}'
             self.report(message, True)
             message = f'{ticker};{company};'
-            message += f'{self.start_capital:.2f};{capital:.2f};{capital - self.start_capital:.2f}'
+            message += f'{start_investment:.2f};{investment:.2f};{investment - start_investment:.2f}'
             result_csv_content += f'\n{message}'
+        message = f'Total '
+        message += f'${self.start_capital:10.2f} => ${capital:10.2f} = ${capital - self.start_capital:10.2f}'
+        self.report(message, True)
+        message = f'Total;;'
+        message += f'{self.start_capital:.2f};{capital:.2f};{capital - self.start_capital:.2f}'
+        result_csv_content += f'\n{message}'
         today = datetime.datetime.now()
         csv_file_path = f'data/trader.{today:%Y%m%d.%H%M%S}.csv'
         with open(csv_file_path, 'wt') as csv:
             csv.write(result_csv_content)
+
+    def buy_and_hold(self, start_date='2016-01-01', end_date='2020-12-31', report_each_trade=True, tickers=None):
+        if tickers is None:
+            tickers = self.stock_exchange.tickers
+        start_investment = self.start_capital / len(tickers)
+        capital = 0.0
+        for ticker, company in tickers.items():
+            investment = start_investment
+            quotes = self.stock_exchange.load(ticker, start_date, end_date)
+            row = quotes.iloc[0]
+            price = row['close']
+            count = int(investment / price)
+            if count > 0:
+
+                buy_price = price
+                investment -= 1.0
+                investment -= count * price
+                message = f'Buy & Hold - {row["date"]} - {ticker:5} - buy  '
+                message += f'{count:5} x ${price:7.2f} = ${count * price:10.2f}'
+                self.report(message, report_each_trade)
+
+                row = quotes.iloc[len(quotes) - 1]
+                price = row['close']
+                investment -= 1.0
+                investment += count * price
+                earnings = (count * price) - (count * buy_price)
+                if earnings > 0.0:
+                    tax = earnings * self.tax_rate
+                    investment -= tax
+                message = f'Buy & Hold - {row["date"]} - {ticker:5} - sell '
+                message += f'{count:5} x ${price:7.2f} = ${count * price:10.2f}'
+                self.report(message, report_each_trade)
+
+                capital += investment
+                message = f'Buy & Hold - {ticker:5} {company:40} '
+                message += f'${start_investment:10.2f} => ${investment:10.2f} = ${investment - start_investment:10.2f}'
+                self.report(message, True)
+        message = f'Buy & Hold - Total '
+        message += f'${self.start_capital:10.2f} => ${capital:10.2f} = ${capital - self.start_capital:10.2f}'
+        self.report(message, True)
 
     @staticmethod
     def report(message, verbose):

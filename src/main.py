@@ -156,5 +156,14 @@ if args.train_decision_maker > 0:
     print("Reload decision maker with best training result after training ...")
     manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
 
-print(f"Trade from {trader_start_date} to {trader_end_date} ...")
-trader.trade(decision_maker, trader_start_date, trader_end_date, True)
+print(f"Trade all stocks from {trader_start_date} to {trader_end_date} ...")
+trader.trade(decision_maker, trader_start_date, trader_end_date, False, provider.tickers)
+
+print(f"Buy and hold all stocks from {trader_start_date} to {trader_end_date} ...")
+trader.buy_and_hold(trader_start_date, trader_end_date, False, provider.tickers)
+
+print(f"Trade DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
+trader.trade(decision_maker, trader_start_date, trader_end_date, False, provider.dow30_tickers)
+
+print(f"Buy and hold DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
+trader.buy_and_hold(trader_start_date, trader_end_date, False, provider.dow30_tickers)
