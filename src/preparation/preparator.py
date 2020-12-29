@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import time
 import os
 import json
@@ -34,6 +35,41 @@ class DataPreparator:
             print(f'Loading {frames_path} ...')
             frames = json.load(infile)
         return {frame['ticker']: frame for frame in frames}
+
+    @staticmethod
+    def prepare_all_quotes(provider, days=5, start_date='2000-01-01', end_date='2015-12-31', tickers=None):
+        quotes_path = f'data/all_quotes.{start_date}.json'
+        tickers_path = f'data/all_tickers.{start_date}.json'
+        if not os.path.exists(quotes_path):
+            if tickers is None:
+                tickers = provider.tickers
+            all_quotes = None
+            all_tickers = {}
+            for ticker, company in tickers.items():
+                print(f'Load {company} ...')
+                quotes = provider.load(ticker, start_date, end_date)
+                if quotes is None:
+                    continue
+                quotes[f'{ticker}_window'] = DataPreparator.calculate_windows(quotes, days=days, normalize=True)
+                quotes[f'{ticker}_last_days'] = DataPreparator.calculate_last_days(quotes, days=days, normalize=True)
+                quotes = quotes.rename(columns={
+                    'close': f'{ticker}_close'
+                })
+                quotes = quotes[['date', f'{ticker}_window', f'{ticker}_last_days', f'{ticker}_close']].copy()
+                if all_quotes is None:
+                    all_quotes = quotes
+                else:
+                    all_quotes = pd.merge(all_quotes, quotes, how='outer', on='date')
+                all_tickers[ticker] = company
+            all_quotes.to_json(quotes_path)
+            with open(tickers_path, 'w') as outfile:
+                print(f'Saving {tickers_path} ...')
+                json.dump(all_tickers, outfile, indent=4)
+        all_quotes = pd.read_json(quotes_path)
+        with open(tickers_path, 'r') as infile:
+            print(f'Loading {tickers_path} ...')
+            all_tickers = json.load(infile)
+        return all_quotes, all_tickers
 
     @staticmethod
     def calculate_changes(quotes):
