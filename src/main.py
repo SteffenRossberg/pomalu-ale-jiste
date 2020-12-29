@@ -1,6 +1,8 @@
 import argparse
 import numpy as np
 import torch
+import pandas as pd
+import matplotlib.pyplot as plt
 from src.environment.dataprovider import DataProvider
 from src.preparation.preparator import DataPreparator
 from src.networks.manager import NetManager
@@ -17,7 +19,7 @@ train_start_date = '2000-01-01'
 train_end_date = '2015-12-31'
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
-trader_end_date = '2020-12-31'
+trader_end_date = '2020-12-28'
 trader_start_capital = 50_000.0
 trader_capital_gains_tax = 25.0
 trader_solidarity_surcharge = 5.5
@@ -156,5 +158,90 @@ if args.train_decision_maker > 0:
     print("Reload decision maker with best training result after training ...")
     manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
 
-print(f"Trade from {trader_start_date} to {trader_end_date} ...")
-trader.trade(decision_maker, trader_start_date, trader_end_date, True)
+all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
+                                                            sample_days,
+                                                            trader_start_date,
+                                                            trader_end_date,
+                                                            provider.tickers)
+result = ''
+
+print(f"Trade concurrent all stocks from {trader_start_date} to {trader_end_date} ...")
+message, all_earnings = trader.trade_concurrent(decision_maker,
+                                                all_quotes,
+                                                all_tickers,
+                                                False,
+                                                provider.tickers,
+                                                max_positions=int(len(provider.tickers) / 3))
+result += f'\nTrade Portfolio (max {int(len(provider.tickers) / 3)} stocks): {message}'
+
+print(f"Trade all stocks from {trader_start_date} to {trader_end_date} ...")
+message, _ = trader.trade(decision_maker,
+                          all_quotes,
+                          all_tickers,
+                          False,
+                          provider.tickers)
+result += f'\nTrade All ({len(provider.tickers)} stocks): {message}'
+
+print(f"Buy and hold all stocks from {trader_start_date} to {trader_end_date} ...")
+message, _ = trader.buy_and_hold(all_quotes,
+                                 all_tickers,
+                                 False,
+                                 provider.tickers)
+result += f'\nBuy % Hold All ({len(provider.tickers)} stocks): {message}'
+
+print(f"Trade concurrent DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
+message, dow_earnings = trader.trade_concurrent(decision_maker,
+                                                all_quotes,
+                                                all_tickers,
+                                                False,
+                                                provider.dow30_tickers,
+                                                max_positions=int(len(provider.dow30_tickers) / 3))
+result += f'\nTrade DOW 30 (max. {int(len(provider.dow30_tickers) / 3)} stocks): {message}'
+
+
+print(f"Trade DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
+message, _ = trader.trade(decision_maker,
+                          all_quotes,
+                          all_tickers,
+                          False,
+                          provider.dow30_tickers)
+result += f'\nTrade DOW 30 stocks: {message}'
+
+print(f"Buy and hold DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
+message, _ = trader.buy_and_hold(all_quotes,
+                                 all_tickers,
+                                 False,
+                                 provider.dow30_tickers)
+result += f'\nBuy % Hold DOW 30 stocks: {message}'
+
+print(result)
+
+dow30 = pd.read_csv('data/dow30.2016-01-01.csv')
+# dow30_rates = dow30['Adj Close'].values
+# dow30_max = dow30_rates.max()
+# dow30_min = dow30_rates.min()
+# dow30_rates = (dow30_rates - dow30_min) / (dow30_max - dow30_min) * 100.0
+# dow30['Adj Close'] = dow30_rates
+# dow30 = dow30[['Date', 'Adj Close']].copy()
+# dow30.to_csv('data/dow30.2016-01-01.csv')
+
+dow_earnings = np.array(dow_earnings)
+dow_earnings_max = dow_earnings.max()
+dow_earnings_min = dow_earnings.min()
+dow_earnings = (dow_earnings - dow_earnings_min) / (dow_earnings_max - dow_earnings_min) * 100.0
+
+all_earnings = np.array(all_earnings)
+all_earnings_max = all_earnings.max()
+all_earnings_min = all_earnings.min()
+all_earnings = (all_earnings - all_earnings_min) / (all_earnings_max - all_earnings_min) * 100.0
+
+dow_earnings = pd.DataFrame(data={
+    'Date': dow30['Date'].values,
+    'DOW 30': dow30['Adj Close'].values,
+    f'KI Concurrent DOW 30 (max. {int(len(provider.dow30_tickers) / 3)} stocks)': dow_earnings,
+    f'KI Concurrent ALL (max. {int(len(provider.tickers) / 3)} stocks)': all_earnings
+})
+dow_earnings.set_index(keys='Date')
+dow_earnings.plot(figsize=(20, 10))
+plt.show()
+plt.close()
