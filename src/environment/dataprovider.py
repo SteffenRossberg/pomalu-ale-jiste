@@ -141,6 +141,7 @@ class DataProvider:
             quotes.to_csv(relative_file_path)
         quotes = pd.read_csv(relative_file_path)
         quotes['date'] = pd.to_datetime(quotes['date'], format='%Y-%m-%d')
+        quotes.fillna(method='bfill', inplace=True)
         return quotes
 
     def __ensure_cache_file_path(self, ticker, start_date):
