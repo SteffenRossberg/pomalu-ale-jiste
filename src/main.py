@@ -168,98 +168,155 @@ all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
 result = ''
 
 print(f"Trade concurrent all stocks from {trader_start_date} to {trader_end_date} ...")
-message, limit_all_investments = trader.trade(decision_maker,
-                                              all_quotes,
-                                              all_tickers,
-                                              False,
-                                              provider.tickers,
-                                              max_positions=int(len(provider.tickers) / 3))
+message, limit_all_investments, limit_all_gain_loss = \
+    trader.trade(
+        decision_maker,
+        all_quotes,
+        all_tickers,
+        False,
+        provider.tickers,
+        max_positions=int(len(provider.tickers) / 3))
 result += f'\nTrade Portfolio (max {int(len(provider.tickers) / 3)} stocks): {message}'
 
 print(f"Trade all stocks from {trader_start_date} to {trader_end_date} ...")
-message, all_investments = trader.trade(decision_maker,
-                                        all_quotes,
-                                        all_tickers,
-                                        False,
-                                        provider.tickers)
+message, all_investments, all_gain_loss = \
+    trader.trade(
+        decision_maker,
+        all_quotes,
+        all_tickers,
+        False,
+        provider.tickers)
 result += f'\nTrade All ({len(provider.tickers)} stocks): {message}'
 
 print(f"Buy and hold all stocks from {trader_start_date} to {trader_end_date} ...")
-message, _ = trader.buy_and_hold(all_quotes,
-                                 all_tickers,
-                                 False,
-                                 provider.tickers)
+message = \
+    trader.buy_and_hold(
+        all_quotes,
+        all_tickers,
+        False,
+        provider.tickers)
 result += f'\nBuy % Hold All ({len(provider.tickers)} stocks): {message}'
 
 print(f"Trade concurrent DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
-message, limit_dow_investments = trader.trade(decision_maker,
-                                              all_quotes,
-                                              all_tickers,
-                                              False,
-                                              provider.dow30_tickers,
-                                              max_positions=int(len(provider.dow30_tickers) / 3))
+message, limit_dow_investments, limit_dow_gain_loss = \
+    trader.trade(
+        decision_maker,
+        all_quotes,
+        all_tickers,
+        False,
+        provider.dow30_tickers,
+        max_positions=int(len(provider.dow30_tickers) / 3))
 result += f'\nTrade DOW 30 (max. {int(len(provider.dow30_tickers) / 3)} stocks): {message}'
 
 
 print(f"Trade DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
-message, dow_investments = trader.trade(decision_maker,
-                                        all_quotes,
-                                        all_tickers,
-                                        False,
-                                        provider.dow30_tickers)
+message, dow_investments, dow_gain_loss = \
+    trader.trade(
+        decision_maker,
+        all_quotes,
+        all_tickers,
+        False,
+        provider.dow30_tickers)
 result += f'\nTrade DOW 30 stocks: {message}'
 
 print(f"Buy and hold DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
-message, _ = trader.buy_and_hold(all_quotes,
-                                 all_tickers,
-                                 False,
-                                 provider.dow30_tickers)
+message = \
+    trader.buy_and_hold(
+        all_quotes,
+        all_tickers,
+        False,
+        provider.dow30_tickers)
 result += f'\nBuy % Hold DOW 30 stocks: {message}'
 
 print(result)
 
 dow30 = pd.read_csv('data/dow30.2016-01-01.csv')
-# dow30_rates = dow30['Adj Close'].values
-# dow30_max = dow30_rates.max()
-# dow30_min = dow30_rates.min()
-# dow30_rates = (dow30_rates - dow30_min) / (dow30_max - dow30_min) * 100.0
-# dow30['Adj Close'] = dow30_rates
+# dow30['Adj Close'] = DataPreparator.normalize_data(dow30['Adj Close'].values) * 100.0
 # dow30 = dow30[['Date', 'Adj Close']].copy()
 # dow30.to_csv('data/dow30.2016-01-01.csv')
 
-dow_investments = np.array(dow_investments)
-dow_investments_max = dow_investments.max()
-dow_investments_min = dow_investments.min()
-dow_investments = (dow_investments - dow_investments_min) / \
-                  (dow_investments_max - dow_investments_min) * 100.0
+results = [DataPreparator.normalize_data(np.array(result)) * 100.0 + 100.0
+           for result in [[dow_investments, all_investments,
+                          limit_dow_investments, limit_all_investments],
+                          [dow_gain_loss, all_gain_loss,
+                          limit_dow_gain_loss, limit_all_gain_loss]]]
 
-limit_dow_investments = np.array(limit_dow_investments)
-limit_dow_investments_max = limit_dow_investments.max()
-limit_dow_investments_min = limit_dow_investments.min()
-limit_dow_investments = (limit_dow_investments - limit_dow_investments_min) / \
-                        (limit_dow_investments_max - limit_dow_investments_min) * 100.0
+investments, gain_losses = results
+dow_investments, all_investments, limit_dow_investments, limit_all_investments = investments
+dow_gain_loss, all_gain_loss, limit_dow_gain_loss, limit_all_gain_loss = gain_losses
 
-all_investments = np.array(all_investments)
-all_investments_max = all_investments.max()
-all_investments_min = all_investments.min()
-all_investments = (all_investments - all_investments_min) / \
-                  (all_investments_max - all_investments_min) * 100.0
+dow_title = 'Dow-Jones-Index 30'
+all_dow_title = f'All Dow-Jones-Index Stocks ({len(provider.dow30_tickers)} positions)'
+all_title = f'All Stocks ({len(provider.tickers)} positions)'
+limit_dow_title = f'Dow-Jones-Index Stocks (max. {int(len(provider.dow30_tickers) / 3)} positions at once)'
+limit_all_title = f'All Stocks (max. {int(len(provider.tickers) / 3)} positions at once)'
+gain_loss_all_dow_title = f'Gain/Loss All Dow-Jones-Index Stocks ({len(provider.dow30_tickers)} positions)'
+gain_loss_all_title = f'Gain/Loss All Stocks ({len(provider.tickers)} positions)'
+gain_loss_limit_dow_title = f'Gain/Loss Dow-Jones-Index Stocks (max. {int(len(provider.dow30_tickers) / 3)} ' + \
+                            'positions at once)'
+gain_loss_limit_all_title = f'Gain/Loss All Stocks (max. {int(len(provider.tickers) / 3)} positions at once)'
 
-limit_all_investments = np.array(limit_all_investments)
-limit_all_investments_max = limit_all_investments.max()
-limit_all_investments_min = limit_all_investments.min()
-limit_all_investments = (limit_all_investments - limit_all_investments_min) / \
-                        (limit_all_investments_max - limit_all_investments_min) * 100.0
+resulting_frame = pd.DataFrame(
+    data={
+        dow_title: dow30['Adj Close'] + 100.0,
+        all_dow_title: dow_investments,
+        all_title: all_investments,
+        limit_dow_title: limit_dow_investments,
+        limit_all_title: limit_all_investments,
+        gain_loss_all_dow_title: dow_gain_loss,
+        gain_loss_all_title: all_gain_loss,
+        gain_loss_limit_dow_title: limit_dow_gain_loss,
+        gain_loss_limit_all_title: limit_all_gain_loss
+    })
+resulting_frame['Date'] = pd.to_datetime(dow30['Date'], format='%Y-%m-%d')
 
-dow_earnings = pd.DataFrame(data={
-    'Date': dow30['Date'].values,
-    'DOW 30': dow30['Adj Close'].values,
-    f'All Dow-Jones-Index Stocks ({len(provider.dow30_tickers)} positions)': dow_investments,
-    f'All Stocks ({len(provider.tickers)} positions)': all_investments,
-    f'Dow-Jones-Index Stocks (max. {int(len(provider.dow30_tickers) / 3)} positions at once)': limit_dow_investments,
-    f'All Stocks (max. {int(len(provider.tickers) / 3)} positions at once)': limit_all_investments
-})
-dow_earnings.set_index(keys='Date')
-dow_earnings.plot(figsize=(20, 10))
+all_columns = [
+    dow_title,
+    all_dow_title,
+    limit_dow_title,
+    all_title,
+    limit_all_title,
+    gain_loss_all_dow_title,
+    gain_loss_limit_dow_title,
+    gain_loss_all_title,
+    gain_loss_limit_all_title
+]
+changes_columns = [f'Change {column}' for column in all_columns]
+resulting_frame[changes_columns] = resulting_frame[all_columns].pct_change(1).fillna(0.0) * 100.0
+resulting_frame['index'] = range(len(resulting_frame))
+for change_column, relative_column in zip(changes_columns, all_columns):
+    resulting_frame[relative_column] = \
+        resulting_frame.apply(
+            lambda row: np.sum(resulting_frame[change_column][0:row['index'] + 1]),
+            axis=1)
+
+resulting_frame.set_index(resulting_frame['Date'], inplace=True)
+
+fig, ax = plt.subplots(nrows=2)
+
+investment_columns = [
+    dow_title,
+    all_dow_title,
+    limit_dow_title,
+    all_title,
+    limit_all_title
+]
+resulting_frame[investment_columns].plot(
+    ax=ax[0],
+    figsize=(20, 10),
+    title='Investment vs Dow-Jones-Index')
+
+gain_loss_columns = [
+    dow_title,
+    gain_loss_all_dow_title,
+    gain_loss_limit_dow_title,
+    gain_loss_all_title,
+    gain_loss_limit_all_title
+]
+resulting_frame[gain_loss_columns].plot(
+    ax=ax[1],
+    figsize=(20, 10),
+    title='Portfolio Changes vs Dow-Jones-Index')
+
 plt.show()
 plt.close()
