@@ -236,10 +236,11 @@ result += f'\nBuy % Hold DOW 30 stocks: {message}'
 
 print(result)
 
-dow30 = pd.read_csv(f'data/{trader_start_date}/DOW30_INDX.csv')
-# dow30['close'] = DataPreparator.normalize_data(dow30['Close'].values) * 100.0
-# dow30 = dow30[['date', 'close']].copy()
+# dow30 = pd.read_csv(f'data/{trader_start_date}/DOW30_INDX.csv')
+# dow30['Adj Close'] = DataPreparator.normalize_data(dow30['Adj Close'].values) * 100.0 + 100.0
+# dow30 = dow30[['Date', 'Adj Close']].copy()
 # dow30.to_csv(f'data/{trader_start_date}/DOW30_INDX.csv')
+dow30 = pd.read_csv(f'data/{trader_start_date}/DOW30_INDX.csv')
 
 results = [DataPreparator.normalize_data(np.array(result)) * 100.0 + 100.0
            for result in [[dow_investments, all_investments,
@@ -264,7 +265,7 @@ gain_loss_limit_all_title = f'Return all stocks (max. {max_limit_all_positions} 
 
 resulting_frame = pd.DataFrame(
     data={
-        dow_title: dow30['close'],
+        dow_title: dow30['Adj Close'],
         all_dow_title: dow_investments[-len(dow30):],
         all_title: all_investments[-len(dow30):],
         limit_dow_title: limit_dow_investments[-len(dow30):],
@@ -274,7 +275,7 @@ resulting_frame = pd.DataFrame(
         gain_loss_limit_dow_title: limit_dow_gain_loss[-len(dow30):],
         gain_loss_limit_all_title: limit_all_gain_loss[-len(dow30):]
     })
-resulting_frame['date'] = pd.to_datetime(dow30['date'], format='%Y-%m-%d')
+resulting_frame['Date'] = pd.to_datetime(dow30['Date'], format='%Y-%m-%d')
 
 all_columns = [
     dow_title,
@@ -296,7 +297,7 @@ for change_column, relative_column in zip(changes_columns, all_columns):
             lambda row: np.sum(resulting_frame[change_column][0:row['index'] + 1]),
             axis=1)
 
-resulting_frame.set_index(resulting_frame['date'], inplace=True)
+resulting_frame.set_index(resulting_frame['Date'], inplace=True)
 
 fig, ax = plt.subplots(nrows=2)
 
