@@ -21,6 +21,7 @@ train_end_date = '2015-12-31'
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-28'
 trader_start_capital = 50_000.0
+trader_order_fee = 1.0
 trader_capital_gains_tax = 25.0
 trader_solidarity_surcharge = 5.5
 # Use the last 5 days as a time frame for sampling, forecasting and trading
@@ -80,6 +81,7 @@ best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decisi
 
 print("Create trader ...")
 trader = Trader(trader_start_capital,
+                trader_order_fee,
                 trader_capital_gains_tax,
                 trader_solidarity_surcharge,
                 provider,
@@ -166,20 +168,20 @@ all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
 result = ''
 
 print(f"Trade concurrent all stocks from {trader_start_date} to {trader_end_date} ...")
-message, all_earnings = trader.trade_concurrent(decision_maker,
-                                                all_quotes,
-                                                all_tickers,
-                                                False,
-                                                provider.tickers,
-                                                max_positions=int(len(provider.tickers) / 3))
+message, limit_all_investments = trader.trade(decision_maker,
+                                              all_quotes,
+                                              all_tickers,
+                                              False,
+                                              provider.tickers,
+                                              max_positions=int(len(provider.tickers) / 3))
 result += f'\nTrade Portfolio (max {int(len(provider.tickers) / 3)} stocks): {message}'
 
 print(f"Trade all stocks from {trader_start_date} to {trader_end_date} ...")
-message, _ = trader.trade(decision_maker,
-                          all_quotes,
-                          all_tickers,
-                          False,
-                          provider.tickers)
+message, all_investments = trader.trade(decision_maker,
+                                        all_quotes,
+                                        all_tickers,
+                                        False,
+                                        provider.tickers)
 result += f'\nTrade All ({len(provider.tickers)} stocks): {message}'
 
 print(f"Buy and hold all stocks from {trader_start_date} to {trader_end_date} ...")
@@ -190,21 +192,21 @@ message, _ = trader.buy_and_hold(all_quotes,
 result += f'\nBuy % Hold All ({len(provider.tickers)} stocks): {message}'
 
 print(f"Trade concurrent DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
-message, dow_earnings = trader.trade_concurrent(decision_maker,
-                                                all_quotes,
-                                                all_tickers,
-                                                False,
-                                                provider.dow30_tickers,
-                                                max_positions=int(len(provider.dow30_tickers) / 3))
+message, limit_dow_investments = trader.trade(decision_maker,
+                                              all_quotes,
+                                              all_tickers,
+                                              False,
+                                              provider.dow30_tickers,
+                                              max_positions=int(len(provider.dow30_tickers) / 3))
 result += f'\nTrade DOW 30 (max. {int(len(provider.dow30_tickers) / 3)} stocks): {message}'
 
 
 print(f"Trade DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
-message, _ = trader.trade(decision_maker,
-                          all_quotes,
-                          all_tickers,
-                          False,
-                          provider.dow30_tickers)
+message, dow_investments = trader.trade(decision_maker,
+                                        all_quotes,
+                                        all_tickers,
+                                        False,
+                                        provider.dow30_tickers)
 result += f'\nTrade DOW 30 stocks: {message}'
 
 print(f"Buy and hold DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
@@ -225,21 +227,37 @@ dow30 = pd.read_csv('data/dow30.2016-01-01.csv')
 # dow30 = dow30[['Date', 'Adj Close']].copy()
 # dow30.to_csv('data/dow30.2016-01-01.csv')
 
-dow_earnings = np.array(dow_earnings)
-dow_earnings_max = dow_earnings.max()
-dow_earnings_min = dow_earnings.min()
-dow_earnings = (dow_earnings - dow_earnings_min) / (dow_earnings_max - dow_earnings_min) * 100.0
+dow_investments = np.array(dow_investments)
+dow_investments_max = dow_investments.max()
+dow_investments_min = dow_investments.min()
+dow_investments = (dow_investments - dow_investments_min) / \
+                  (dow_investments_max - dow_investments_min) * 100.0
 
-all_earnings = np.array(all_earnings)
-all_earnings_max = all_earnings.max()
-all_earnings_min = all_earnings.min()
-all_earnings = (all_earnings - all_earnings_min) / (all_earnings_max - all_earnings_min) * 100.0
+limit_dow_investments = np.array(limit_dow_investments)
+limit_dow_investments_max = limit_dow_investments.max()
+limit_dow_investments_min = limit_dow_investments.min()
+limit_dow_investments = (limit_dow_investments - limit_dow_investments_min) / \
+                        (limit_dow_investments_max - limit_dow_investments_min) * 100.0
+
+all_investments = np.array(all_investments)
+all_investments_max = all_investments.max()
+all_investments_min = all_investments.min()
+all_investments = (all_investments - all_investments_min) / \
+                  (all_investments_max - all_investments_min) * 100.0
+
+limit_all_investments = np.array(limit_all_investments)
+limit_all_investments_max = limit_all_investments.max()
+limit_all_investments_min = limit_all_investments.min()
+limit_all_investments = (limit_all_investments - limit_all_investments_min) / \
+                        (limit_all_investments_max - limit_all_investments_min) * 100.0
 
 dow_earnings = pd.DataFrame(data={
     'Date': dow30['Date'].values,
     'DOW 30': dow30['Adj Close'].values,
-    f'KI Concurrent DOW 30 (max. {int(len(provider.dow30_tickers) / 3)} stocks)': dow_earnings,
-    f'KI Concurrent ALL (max. {int(len(provider.tickers) / 3)} stocks)': all_earnings
+    f'All Dow-Jones-Index Stocks ({len(provider.dow30_tickers)} positions)': dow_investments,
+    f'All Stocks ({len(provider.tickers)} positions)': all_investments,
+    f'Dow-Jones-Index Stocks (max. {int(len(provider.dow30_tickers) / 3)} positions at once)': limit_dow_investments,
+    f'All Stocks (max. {int(len(provider.tickers) / 3)} positions at once)': limit_all_investments
 })
 dow_earnings.set_index(keys='Date')
 dow_earnings.plot(figsize=(20, 10))
