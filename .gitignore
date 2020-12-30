@@ -132,4 +132,3 @@ dmypy.json
 **/.idea/
 
 **/data/*
-!**/data/dow30.2016-01-01.csv
