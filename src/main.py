@@ -236,12 +236,6 @@ result += f'\nBuy % Hold DOW 30 stocks: {message}'
 
 print(result)
 
-# dow30 = pd.read_csv(f'data/{trader_start_date}/DOW30_INDX.csv')
-# dow30['Adj Close'] = DataPreparator.normalize_data(dow30['Adj Close'].values) * 100.0 + 100.0
-# dow30 = dow30[['Date', 'Adj Close']].copy()
-# dow30.to_csv(f'data/{trader_start_date}/DOW30_INDX.csv')
-dow30 = pd.read_csv(f'data/{trader_start_date}/DOW30_INDX.csv')
-
 results = [DataPreparator.normalize_data(np.array(result)) * 100.0 + 100.0
            for result in [[dow_investments, all_investments,
                           limit_dow_investments, limit_all_investments],
@@ -251,6 +245,15 @@ results = [DataPreparator.normalize_data(np.array(result)) * 100.0 + 100.0
 investments, gain_losses = results
 dow_investments, all_investments, limit_dow_investments, limit_all_investments = investments
 dow_gain_loss, all_gain_loss, limit_dow_gain_loss, limit_all_gain_loss = gain_losses
+
+# uncomment following lines on first run after download EOD data of compare index
+# compare_index = pd.read_csv(f'data/{trader_start_date}/COMPARE_INDX.csv')
+# compare_index['Adj Close'] = DataPreparator.normalize_data(compare_index['Adj Close'].values) * 100.0 + 100.0
+# compare_index = compare_index[['Date', 'Adj Close']].copy()
+# compare_index.to_csv(f'data/{trader_start_date}/COMPARE_INDX.csv')
+
+# historical EOD data of a compare index can be found for example at https://finance.yahoo.com
+compare_index = pd.read_csv(f'data/{trader_start_date}/COMPARE_INDX.csv')
 
 dow_title = 'Dow-Jones-Industrial Index 30'
 all_dow_title = f'All Dow-Jones-Industrial Index Stocks ({max_dow_positions} positions)'
@@ -265,17 +268,17 @@ gain_loss_limit_all_title = f'Return all stocks (max. {max_limit_all_positions} 
 
 resulting_frame = pd.DataFrame(
     data={
-        dow_title: dow30['Adj Close'],
-        all_dow_title: dow_investments[-len(dow30):],
-        all_title: all_investments[-len(dow30):],
-        limit_dow_title: limit_dow_investments[-len(dow30):],
-        limit_all_title: limit_all_investments[-len(dow30):],
-        gain_loss_all_dow_title: dow_gain_loss[-len(dow30):],
-        gain_loss_all_title: all_gain_loss[-len(dow30):],
-        gain_loss_limit_dow_title: limit_dow_gain_loss[-len(dow30):],
-        gain_loss_limit_all_title: limit_all_gain_loss[-len(dow30):]
+        dow_title: compare_index['Adj Close'],
+        all_dow_title: dow_investments[-len(compare_index):],
+        all_title: all_investments[-len(compare_index):],
+        limit_dow_title: limit_dow_investments[-len(compare_index):],
+        limit_all_title: limit_all_investments[-len(compare_index):],
+        gain_loss_all_dow_title: dow_gain_loss[-len(compare_index):],
+        gain_loss_all_title: all_gain_loss[-len(compare_index):],
+        gain_loss_limit_dow_title: limit_dow_gain_loss[-len(compare_index):],
+        gain_loss_limit_all_title: limit_all_gain_loss[-len(compare_index):]
     })
-resulting_frame['Date'] = pd.to_datetime(dow30['Date'], format='%Y-%m-%d')
+resulting_frame['Date'] = pd.to_datetime(compare_index['Date'], format='%Y-%m-%d')
 
 all_columns = [
     dow_title,
