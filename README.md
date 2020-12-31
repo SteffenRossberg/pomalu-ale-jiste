@@ -3,6 +3,8 @@
 ... I want to play with an AI that uses the PyTorch framework to
 chew through some time series like stock prices.
 
+![pomalu-ale-jiste](docs/Trader.vs.SP500.png)
+
 ## my way I will go ...
 
 First, I want to create a simple auto-encoder that remembers possible
