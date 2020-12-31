@@ -115,12 +115,22 @@ class DataProvider:
                 'YELP': 'Yelp Inc',
                 'ZNGA': 'Zynga Inc'
             }
+        self.__indices = {
+            '^GDAXI': 'DAX',
+            '^DJI': 'Dow Jones Industrial Average',
+            '^MDAXI': 'MDAX',
+            '^GSPC': 'S&P 500',
+        }
         self.__data_directory = data_directory
         self.__api_key = api_key
 
     @property
     def tickers(self):
         return self.__tickers
+
+    @property
+    def indices(self):
+        return self.__indices
 
     @property
     def dow30_tickers(self):

@@ -236,52 +236,41 @@ result += f'\nBuy % Hold DOW 30 stocks: {message}'
 
 print(result)
 
-results = [DataPreparator.normalize_data(np.array(result)) * 100.0 + 100.0
-           for result in [[dow_investments, all_investments,
-                          limit_dow_investments, limit_all_investments],
-                          [dow_gain_loss, all_gain_loss,
-                          limit_dow_gain_loss, limit_all_gain_loss]]]
-
-investments, gain_losses = results
-dow_investments, all_investments, limit_dow_investments, limit_all_investments = investments
-dow_gain_loss, all_gain_loss, limit_dow_gain_loss, limit_all_gain_loss = gain_losses
-
-# uncomment following lines on first run after download EOD data of compare index
-# compare_index = pd.read_csv(f'data/{trader_start_date}/COMPARE_INDX.csv')
-# compare_index['Adj Close'] = DataPreparator.normalize_data(compare_index['Adj Close'].values) * 100.0 + 100.0
-# compare_index = compare_index[['Date', 'Adj Close']].copy()
-# compare_index.to_csv(f'data/{trader_start_date}/COMPARE_INDX.csv')
-
 # historical EOD data of a compare index can be found for example at https://finance.yahoo.com
-compare_index = pd.read_csv(f'data/{trader_start_date}/COMPARE_INDX.csv')
+index_ticker = '^GSPC'
+index_title = provider.indices[index_ticker]
+compare_index = pd.read_csv(f'data/{trader_start_date}/{index_ticker}.csv')
 
-dow_title = 'Dow-Jones-Industrial Index 30'
-all_dow_title = f'All Dow-Jones-Industrial Index Stocks ({max_dow_positions} positions)'
-all_title = f'All Stocks ({max_all_positions} positions)'
-limit_dow_title = f'Dow-Jones-Industrial Index Stocks (max. {max_limit_dow_positions} positions at once)'
-limit_all_title = f'All Stocks (max. {max_limit_all_positions} positions at once)'
-gain_loss_all_dow_title = f'Return of all Dow-Jones-Industrial Index Stocks ({max_dow_positions} positions)'
-gain_loss_all_title = f'Return of all Stocks ({max_all_positions} positions)'
-gain_loss_limit_dow_title = f'Return Dow-Jones-Industrial Index stocks (max. {max_limit_dow_positions} ' + \
+all_dow_title = f'All Dow Jones Industrial Average stocks ({max_dow_positions} positions)'
+all_title = f'All stocks ({max_all_positions} positions)'
+limit_dow_title = f'Dow Jones Industrial Average stocks (max. {max_limit_dow_positions} positions at once)'
+limit_all_title = f'All stocks (max. {max_limit_all_positions} positions at once)'
+gain_loss_all_dow_title = f'Return all Dow Jones Industrial Average stocks ({max_dow_positions} positions)'
+gain_loss_all_title = f'Return all stocks ({max_all_positions} positions)'
+gain_loss_limit_dow_title = f'Return Dow Jones Industrial Average stocks (max. {max_limit_dow_positions} ' + \
                             'positions at once)'
 gain_loss_limit_all_title = f'Return all stocks (max. {max_limit_all_positions} positions at once)'
 
+length = (len(compare_index)
+          if len(compare_index) < len(all_investments)
+          else len(all_investments))
+
 resulting_frame = pd.DataFrame(
     data={
-        dow_title: compare_index['Adj Close'],
-        all_dow_title: dow_investments[-len(compare_index):],
-        all_title: all_investments[-len(compare_index):],
-        limit_dow_title: limit_dow_investments[-len(compare_index):],
-        limit_all_title: limit_all_investments[-len(compare_index):],
-        gain_loss_all_dow_title: dow_gain_loss[-len(compare_index):],
-        gain_loss_all_title: all_gain_loss[-len(compare_index):],
-        gain_loss_limit_dow_title: limit_dow_gain_loss[-len(compare_index):],
-        gain_loss_limit_all_title: limit_all_gain_loss[-len(compare_index):]
+        index_title: compare_index['Adj Close'].values[-length:],
+        all_dow_title: dow_investments[-length:],
+        all_title: all_investments[-length:],
+        limit_dow_title: limit_dow_investments[-length:],
+        limit_all_title: limit_all_investments[-length:],
+        gain_loss_all_dow_title: np.array(dow_gain_loss[-length:]) + trader_start_capital,
+        gain_loss_all_title: np.array(all_gain_loss[-length:]) + trader_start_capital,
+        gain_loss_limit_dow_title: np.array(limit_dow_gain_loss[-length:]) + trader_start_capital,
+        gain_loss_limit_all_title: np.array(limit_all_gain_loss[-length:]) + trader_start_capital
     })
-resulting_frame['Date'] = pd.to_datetime(compare_index['Date'], format='%Y-%m-%d')
+resulting_frame['Date'] = pd.to_datetime(compare_index['Date'].values[-length:], format='%Y-%m-%d')
 
 all_columns = [
-    dow_title,
+    index_title,
     all_dow_title,
     limit_dow_title,
     all_title,
@@ -292,12 +281,13 @@ all_columns = [
     gain_loss_limit_all_title
 ]
 changes_columns = [f'Change {column}' for column in all_columns]
-resulting_frame[changes_columns] = resulting_frame[all_columns].pct_change(1).fillna(0.0) * 100.0
 resulting_frame['index'] = range(len(resulting_frame))
-for change_column, relative_column in zip(changes_columns, all_columns):
-    resulting_frame[relative_column] = \
+for column in all_columns:
+    change_column = f'Change {column}'
+    resulting_frame[change_column] = resulting_frame[column].pct_change(1).fillna(0.0) * 100.0
+    resulting_frame[column] = \
         resulting_frame.apply(
-            lambda row: np.sum(resulting_frame[change_column][0:row['index'] + 1]),
+            lambda row: np.sum(resulting_frame[change_column].values[0:row['index'] + 1]),
             axis=1)
 
 resulting_frame.set_index(resulting_frame['Date'], inplace=True)
@@ -308,25 +298,29 @@ investment_columns = [
     all_dow_title,
     limit_dow_title,
     all_title,
-    limit_all_title,
-    dow_title
+    limit_all_title
 ]
+resulting_frame[index_title].plot.area(ax=ax[0], stacked=False)
 resulting_frame[investment_columns].plot(
     ax=ax[0],
     figsize=(20, 10),
-    title='Investment vs Dow-Jones-Industrial Index')
+    linewidth=2,
+    title=f'Investment vs {index_title}')
 
 gain_loss_columns = [
     gain_loss_all_dow_title,
     gain_loss_limit_dow_title,
     gain_loss_all_title,
-    gain_loss_limit_all_title,
-    dow_title
+    gain_loss_limit_all_title
 ]
+resulting_frame[index_title].plot.area(ax=ax[1], stacked=False)
 resulting_frame[gain_loss_columns].plot(
     ax=ax[1],
     figsize=(20, 10),
-    title='Portfolio Changes vs Dow-Jones-Industrial Index')
+    linewidth=2,
+    title=f'Portfolio Changes vs {index_title}')
 
 plt.show()
 plt.close()
+
+resulting_frame[gain_loss_columns].copy().to_csv('data/test.csv')
