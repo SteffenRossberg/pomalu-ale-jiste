@@ -144,14 +144,15 @@ class Gym:
                 mean_val = self.calculate_values_of_states(evaluation_states, model)
                 if best_mean_val is None or best_mean_val < mean_val:
                     if best_mean_val is not None:
-                        print(f"{step_index:6}:{learn_step:4} Best mean value updated {best_mean_val:.7f} -> {mean_val:.7f}")
+                        print(f"{step_index:6}:{learn_step:4}:{stock_exchange.train_level} " +
+                              f"Best mean value updated {best_mean_val:.7f} -> {mean_val:.7f}")
                     best_mean_val = mean_val
                     save(self.manager, best_mean_val)
                     learn_step = 0
                     if best_mean_val > self.RL_MAX_LEARN_RESULT_CHANGE:
                         break
                 else:
-                    print(f"{step_index:6}:{learn_step:4} Mean value {mean_val:.7f}")
+                    print(f"{step_index:6}:{learn_step:4}:{stock_exchange.train_level} Mean value {mean_val:.7f}")
                     learn_step += 1
 
             optimizer.zero_grad()

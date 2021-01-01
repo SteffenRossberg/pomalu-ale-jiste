@@ -9,7 +9,7 @@ from src.networks.manager import NetManager
 from src.training.gym import Gym
 from src.trading.trader import Trader
 from src.environment.stock_exchange import StockExchange
-
+from datetime import datetime
 
 if __name__ != "__main__":
     exit(0)
@@ -160,7 +160,7 @@ if args.train_decision_maker > 0:
         stock_exchange.train_level = train_level
         gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
         print("Reload decision maker with best training result after training ...")
-        manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
+        best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
 
 all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
                                                             sample_days,
@@ -277,4 +277,5 @@ resulting_frame[gain_loss_columns].plot(
 plt.show()
 plt.close()
 
-resulting_frame[gain_loss_columns].copy().to_csv('data/test.csv')
+today = datetime.now()
+resulting_frame[gain_loss_columns].copy().to_csv(f'data/trading.gain_loss.{today:%Y%m%d.%H%M%S}.csv')
