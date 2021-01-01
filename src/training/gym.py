@@ -22,7 +22,8 @@ class Gym:
         self.RL_EPSILON_STOP = 0.1
         self.RL_EPSILON_STEPS = 1_000_000
         self.RL_REWARD_STEPS = 2
-        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 20
+        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 50
+        self.RL_MAX_LEARN_RESULT_CHANGE = 72.0
 
     def train_auto_encoder(self, name, agent, optimizer, features, min_loss, max_steps=100, batch_size=5000):
 
@@ -147,6 +148,8 @@ class Gym:
                     best_mean_val = mean_val
                     save(self.manager, best_mean_val)
                     learn_step = 0
+                    if best_mean_val > self.RL_MAX_LEARN_RESULT_CHANGE:
+                        break
                 else:
                     print(f"{step_index:6}:{learn_step:4} Mean value {mean_val:.7f}")
                     learn_step += 1
