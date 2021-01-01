@@ -23,6 +23,7 @@ class PortfolioState:
         self._sell_price = 0.0
         self._top_price = 0.0
         self._bottom_price = 0.0
+        self.__train_level = 1
 
     @property
     def investment(self):
@@ -56,6 +57,14 @@ class PortfolioState:
     def shape(self):
         return self._days * 4 + 1 + 1 + 1,
 
+    @property
+    def train_level(self) -> int:
+        return self.__train_level
+
+    @train_level.setter
+    def train_level(self, value: int):
+        self.__train_level = value
+
     def encode(self):
         day_yield = self._frame['prices'][self._offset] / self._frame['prices'][self._offset - 1] - 1.0
         has_stocks = 1.0 if self._stock_count > 0 else 0.0
@@ -79,27 +88,15 @@ class PortfolioState:
         reward = 0.0
         done = False
         price = self._frame['prices'][self._offset]
-        if action == Actions.Buy:
-            if self._stock_count == 0:
-                count = int((self._investment - self.trading_fees) / price)
-                if count > 0:
-                    reward -= 100.0 * (self.trading_fees / (count * price))
-                    reward += 100.0 * ((self._sell_price - price) / price)
-                    self._investment -= self.trading_fees
-                    self._investment -= count * price
-                    self._stock_count = count
-                    self._buy_price = price
-                    self._sell_price = 0.0
-                    self._top_price = 0.0
-                    self._bottom_price = price
-        elif action == Actions.Sell:
+        if action == Actions.Sell:
             if self._stock_count > 0:
                 reward -= 100.0 * (self.trading_fees / (self._stock_count * price))
-                reward += 100.0 * ((price - self._buy_price) / self._buy_price)
                 done |= self.reset_on_close
                 earnings = (price * self._stock_count) - (self._buy_price * self._stock_count)
                 if earnings > 0.0:
                     earnings *= 1.0 - self.tax_rate
+                if self.__train_level >= 1:
+                    reward += 100.0 * (earnings / (self._buy_price * self._stock_count))
                 self._investment += self._buy_price * self._stock_count
                 self._investment += earnings
                 self._stock_count = 0
@@ -107,13 +104,27 @@ class PortfolioState:
                 self._sell_price = price
                 self._top_price = price
                 self._bottom_price = 0.0
-        elif self._stock_count == 0:
+        elif action == Actions.Buy:
+            if self._stock_count == 0:
+                count = int((self._investment - self.trading_fees) / price)
+                if count > 0:
+                    reward -= 100.0 * (self.trading_fees / (count * price))
+                    if self.__train_level >= 2:
+                        reward += 100.0 * ((self._top_price - price) / price)
+                    self._investment -= self.trading_fees
+                    self._investment -= count * price
+                    self._stock_count = count
+                    self._buy_price = price
+                    self._sell_price = 0.0
+                    self._top_price = 0.0
+                    self._bottom_price = price
+        elif self._stock_count == 0 and self.__train_level >= 3:
             if self._top_price > price:
                 reward += 100.0 * ((self._top_price - price) / price)
             else:
                 reward -= 100.0 * ((price - self._top_price) / self._top_price)
                 self._top_price = price
-        elif self._stock_count > 0:
+        elif self._stock_count > 0 and self.__train_level >= 4:
             if price > self._bottom_price:
                 reward += 100.0 * ((price - self._bottom_price) / self._bottom_price)
             else:
