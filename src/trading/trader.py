@@ -125,7 +125,7 @@ class Trader:
                         if possible_position_investment > price + self.order_fee:
                             count = int(possible_position_investment / price)
                             if count > 0:
-                                portfolio[ticker] = {'buy_price': price, 'count': count}
+                                portfolio[ticker] = {'buy_price': price, 'count': count, 'last_price': price}
                                 investment -= self.order_fee
                                 investment -= count * price
                                 message = f'{row["date"]} - {ticker:5} - buy  '
