@@ -33,6 +33,14 @@ class StockExchange(gym.Env):
         self.random_offset_on_reset = random_offset_on_reset
         self.seed()
 
+    @property
+    def train_level(self) -> int:
+        return self._state.train_level
+
+    @train_level.setter
+    def train_level(self, value: int):
+        self._state.train_level = value
+
     def reset(self):
         # make selection of the instrument and it's offset. Then reset the state
         self._ticker = self.np_random.choice(list(self._frames.keys()))

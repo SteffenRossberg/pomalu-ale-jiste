@@ -19,7 +19,7 @@ train_start_date = '2000-01-01'
 train_end_date = '2015-12-31'
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
-trader_end_date = '2020-12-28'
+trader_end_date = '2020-12-31'
 trader_start_capital = 50_000.0
 trader_order_fee = 1.0
 trader_capital_gains_tax = 25.0
@@ -154,11 +154,13 @@ if args.train_decision_maker > 0:
                                                  train_end_date,
                                                  reset_on_close=False)
 
-    print("Train decision maker ...")
-    gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
-
-    print("Reload decision maker with best training result after training ...")
-    manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
+    stock_exchange.train_level = 0
+    for train_level in range(1, 5):
+        print(f"Train decision maker at level {train_level} ...")
+        stock_exchange.train_level = train_level
+        gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
+        print("Reload decision maker with best training result after training ...")
+        manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
 
 all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
                                                             sample_days,
@@ -202,53 +204,15 @@ message = \
         provider.tickers)
 result += f'\nBuy % Hold All ({len(provider.tickers)} stocks): {message}'
 
-print(f"Trade limited DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
-message, limit_dow_investments, limit_dow_gain_loss = \
-    trader.trade(
-        decision_maker,
-        all_quotes,
-        all_tickers,
-        False,
-        provider.dow30_tickers,
-        max_positions=max_limit_dow_positions)
-result += f'\nTrade DOW 30 (max. {int(len(provider.dow30_tickers) / 3)} stocks): {message}'
-
-
-print(f"Trade DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
-message, dow_investments, dow_gain_loss = \
-    trader.trade(
-        decision_maker,
-        all_quotes,
-        all_tickers,
-        False,
-        provider.dow30_tickers,
-        max_positions=max_dow_positions)
-result += f'\nTrade DOW 30 stocks: {message}'
-
-print(f"Buy and hold DOW30 stocks from {trader_start_date} to {trader_end_date} ...")
-message = \
-    trader.buy_and_hold(
-        all_quotes,
-        all_tickers,
-        False,
-        provider.dow30_tickers)
-result += f'\nBuy % Hold DOW 30 stocks: {message}'
-
 print(result)
 
-# historical EOD data of a compare index can be found for example at https://finance.yahoo.com
-index_ticker = '^GSPC'
-index_title = provider.indices[index_ticker]
-compare_index = pd.read_csv(f'data/{trader_start_date}/{index_ticker}.csv')
+index_ticker = 'URTH'
+index_title = provider.etf_tickers[index_ticker]
+compare_index = provider.load(index_ticker, trader_start_date, trader_end_date, True)
 
-all_dow_title = f'All Dow Jones Industrial Average stocks ({max_dow_positions} positions)'
 all_title = f'All stocks ({max_all_positions} positions)'
-limit_dow_title = f'Dow Jones Industrial Average stocks (max. {max_limit_dow_positions} positions at once)'
 limit_all_title = f'All stocks (max. {max_limit_all_positions} positions at once)'
-gain_loss_all_dow_title = f'Return all Dow Jones Industrial Average stocks ({max_dow_positions} positions)'
 gain_loss_all_title = f'Return all stocks ({max_all_positions} positions)'
-gain_loss_limit_dow_title = f'Return Dow Jones Industrial Average stocks (max. {max_limit_dow_positions} ' + \
-                            'positions at once)'
 gain_loss_limit_all_title = f'Return all stocks (max. {max_limit_all_positions} positions at once)'
 
 length = (len(compare_index)
@@ -257,46 +221,36 @@ length = (len(compare_index)
 
 resulting_frame = pd.DataFrame(
     data={
-        index_title: compare_index['Adj Close'].values[-length:],
-        all_dow_title: dow_investments[-length:],
-        all_title: all_investments[-length:],
-        limit_dow_title: limit_dow_investments[-length:],
-        limit_all_title: limit_all_investments[-length:],
-        gain_loss_all_dow_title: np.array(dow_gain_loss[-length:]) + trader_start_capital,
+        'index': range(length),
+        'date': np.array(compare_index['date'].values[-length:]),
+        index_title: np.array(compare_index['close'].values[-length:]),
+        all_title: np.array(all_investments[-length:]),
+        limit_all_title: np.array(limit_all_investments[-length:]),
         gain_loss_all_title: np.array(all_gain_loss[-length:]) + trader_start_capital,
-        gain_loss_limit_dow_title: np.array(limit_dow_gain_loss[-length:]) + trader_start_capital,
         gain_loss_limit_all_title: np.array(limit_all_gain_loss[-length:]) + trader_start_capital
     })
-resulting_frame['Date'] = pd.to_datetime(compare_index['Date'].values[-length:], format='%Y-%m-%d')
 
 all_columns = [
     index_title,
-    all_dow_title,
-    limit_dow_title,
     all_title,
     limit_all_title,
-    gain_loss_all_dow_title,
-    gain_loss_limit_dow_title,
     gain_loss_all_title,
     gain_loss_limit_all_title
 ]
 changes_columns = [f'Change {column}' for column in all_columns]
-resulting_frame['index'] = range(len(resulting_frame))
 for column in all_columns:
     change_column = f'Change {column}'
     resulting_frame[change_column] = resulting_frame[column].pct_change(1).fillna(0.0) * 100.0
     resulting_frame[column] = \
         resulting_frame.apply(
-            lambda row: np.sum(resulting_frame[change_column].values[0:row['index'] + 1]),
+            lambda row: np.sum(resulting_frame[change_column].values[0:int(row['index'] + 1)]),
             axis=1)
 
-resulting_frame.set_index(resulting_frame['Date'], inplace=True)
+resulting_frame.set_index(resulting_frame['date'], inplace=True)
 
 fig, ax = plt.subplots(nrows=2)
 
 investment_columns = [
-    all_dow_title,
-    limit_dow_title,
     all_title,
     limit_all_title
 ]
@@ -305,11 +259,10 @@ resulting_frame[investment_columns].plot(
     ax=ax[0],
     figsize=(20, 10),
     linewidth=2,
+    colormap='Spectral',
     title=f'Investment vs {index_title}')
 
 gain_loss_columns = [
-    gain_loss_all_dow_title,
-    gain_loss_limit_dow_title,
     gain_loss_all_title,
     gain_loss_limit_all_title
 ]
@@ -318,6 +271,7 @@ resulting_frame[gain_loss_columns].plot(
     ax=ax[1],
     figsize=(20, 10),
     linewidth=2,
+    colormap='Spectral',
     title=f'Portfolio Changes vs {index_title}')
 
 plt.show()
