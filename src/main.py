@@ -9,6 +9,7 @@ from src.networks.manager import NetManager
 from src.training.gym import Gym
 from src.trading.trader import Trader
 from src.environment.stock_exchange import StockExchange
+from src.environment.enums import TrainingLevels
 from datetime import datetime
 
 if __name__ != "__main__":
@@ -155,8 +156,8 @@ if args.train_decision_maker > 0:
                                                  reset_on_close=False)
 
     stock_exchange.train_level = 0
-    for train_level in range(1, 5):
-        print(f"Train decision maker at level {train_level} ...")
+    for train_level in [TrainingLevels.Buy, TrainingLevels.BuySell, TrainingLevels.SkipBuyHoldSell]:
+        print(f"Train decision maker at level {train_level.name} ...")
         stock_exchange.train_level = train_level
         gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
         print("Reload decision maker with best training result after training ...")

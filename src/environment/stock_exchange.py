@@ -2,7 +2,7 @@ import gym
 import gym.spaces
 from gym.utils import seeding
 import numpy as np
-from src.environment.actions import Actions
+from src.environment.enums import Actions, TrainingLevels
 from src.preparation.preparator import DataPreparator
 from src.environment.portfolio_state import PortfolioState
 
@@ -34,11 +34,11 @@ class StockExchange(gym.Env):
         self.seed()
 
     @property
-    def train_level(self) -> int:
+    def train_level(self) -> TrainingLevels:
         return self._state.train_level
 
     @train_level.setter
-    def train_level(self, value: int):
+    def train_level(self, value: TrainingLevels):
         self._state.train_level = value
 
     def reset(self):
