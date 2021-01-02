@@ -1,13 +1,14 @@
 import enum
 
 
-class Actions(enum.Enum):
+class Actions(enum.IntEnum):
     SkipOrHold = 0
     Buy = 1
     Sell = 2
 
 
-class TrainingLevels(enum.IntEnum):
+class TrainingLevels(enum.IntFlag):
     Buy = 1
-    BuySell = 2
-    SkipBuyHoldSell = 3
+    Sell = 2
+    Hold = 4
+    Skip = 8

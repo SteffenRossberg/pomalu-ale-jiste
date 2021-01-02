@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from src.environment.enums import Actions
 
 
 class Trader:
@@ -87,8 +88,8 @@ class Trader:
                     price = row[f'{ticker}_close']
                     if not price > 0.0:
                         price = portfolio[ticker]['last_price']
-                        action['index'] = 2
-                    if action['index'] == 2:
+                        action['index'] = Actions.Sell
+                    if action['index'] == Actions.Sell:
                         count = portfolio[ticker]['count']
                         buy_price = portfolio[ticker]['buy_price']
                         investment -= self.order_fee
@@ -99,15 +100,15 @@ class Trader:
                             investment -= tax
                             earnings -= tax
                         total_gain_loss += earnings
-                        message = f'{row["date"]} - {ticker:5} - sell '
-                        message += f'{count:5} x ${price:7.2f} = ${count * price:10.2f}'
+                        message = f'{portfolio[ticker]["buy_date"]} - {row["date"]} - {ticker:5} - '
+                        message += f'${buy_price:.2f} -> ${price:.2f}'
                         self.report(message, report_each_trade)
                         del portfolio[ticker]
                 possible_position_count = max_positions - len(portfolio)
                 if possible_position_count > 0:
 
                     def action_filter(t):
-                        return t not in portfolio and actions[t]['index'] == 1
+                        return t not in portfolio and actions[t]['index'] == Actions.Buy
 
                     def action_sort(t):
                         return actions[t]['value']
@@ -118,19 +119,21 @@ class Trader:
                         if ticker in portfolio:
                             continue
                         action = actions[ticker]
-                        if action['index'] != 1:
+                        if action['index'] != Actions.Buy:
                             continue
                         price = row[f'{ticker}_close']
                         possible_position_investment = investment / possible_position_count
                         if possible_position_investment > price + self.order_fee:
                             count = int(possible_position_investment / price)
                             if count > 0:
-                                portfolio[ticker] = {'buy_price': price, 'count': count, 'last_price': price}
+                                portfolio[ticker] = {
+                                    'buy_date': row['date'],
+                                    'buy_price': price,
+                                    'count': count,
+                                    'last_price': price
+                                }
                                 investment -= self.order_fee
                                 investment -= count * price
-                                message = f'{row["date"]} - {ticker:5} - buy  '
-                                message += f'{count:5} x ${price:7.2f} = ${count * price:10.2f}'
-                                self.report(message, report_each_trade)
             new_investment = self.calculate_current_investment(investment, portfolio, row)
             investments.append(new_investment)
             gain_loss.append(total_gain_loss)
@@ -149,8 +152,8 @@ class Trader:
                 tax = earnings * self.tax_rate
                 investment -= tax
                 earnings -= tax
-            message = f'{row["date"]} - {ticker:5} - sell '
-            message += f'{count:5} x ${price:7.2f} = ${count * price:10.2f} -> clear positions'
+            message = f'{position["buy_date"]} - {row["date"]} - {ticker:5} - '
+            message += f'${buy_price:.2f} -> ${price:.2f} (clear position)'
             self.report(message, report_each_trade)
 
         investments.append(investment)

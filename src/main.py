@@ -156,8 +156,11 @@ if args.train_decision_maker > 0:
                                                  reset_on_close=False)
 
     stock_exchange.train_level = 0
-    for train_level in [TrainingLevels.Buy, TrainingLevels.BuySell, TrainingLevels.SkipBuyHoldSell]:
-        print(f"Train decision maker at level {train_level.name} ...")
+    for train_level in [TrainingLevels.Skip,
+                        TrainingLevels.Skip | TrainingLevels.Buy,
+                        TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold,
+                        TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell]:
+        print(f"Train decision maker at level {train_level} ...")
         stock_exchange.train_level = train_level
         gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
         print("Reload decision maker with best training result after training ...")
@@ -191,7 +194,7 @@ message, all_investments, all_gain_loss = \
         decision_maker,
         all_quotes,
         all_tickers,
-        False,
+        True,
         provider.tickers,
         max_positions=max_all_positions)
 result += f'\nTrade All ({len(provider.tickers)} stocks): {message}'
