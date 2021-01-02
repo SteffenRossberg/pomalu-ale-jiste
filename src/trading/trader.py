@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from src.environment.enums import Actions
 
 
 class Trader:
@@ -81,14 +82,21 @@ class Trader:
                 for ticker in tickers.keys():
                     if row[f'{ticker}_close'] > 0.0 and ticker in portfolio:
                         portfolio[ticker]['last_price'] = row[f'{ticker}_close']
+                # for ticker in portfolio.keys():
+                #     position = portfolio[ticker]
+                #     if self.calculate_position_gain_loss(ticker, position, row) >= 20.0:
+                #         if ticker in actions:
+                #             actions[ticker]['index'] = Actions.Sell
+                #         else:
+                #             actions[ticker] = {'index': Actions.Sell}
                 for ticker, action in actions.items():
                     if ticker not in portfolio or not portfolio[ticker]['count'] > 0:
                         continue
                     price = row[f'{ticker}_close']
                     if not price > 0.0:
                         price = portfolio[ticker]['last_price']
-                        action['index'] = 2
-                    if action['index'] == 2:
+                        action['index'] = Actions.Sell
+                    if action['index'] == Actions.Sell:
                         count = portfolio[ticker]['count']
                         buy_price = portfolio[ticker]['buy_price']
                         investment -= self.order_fee
@@ -99,15 +107,15 @@ class Trader:
                             investment -= tax
                             earnings -= tax
                         total_gain_loss += earnings
-                        message = f'{row["date"]} - {ticker:5} - sell '
-                        message += f'{count:5} x ${price:7.2f} = ${count * price:10.2f}'
+                        message = f'{portfolio[ticker]["buy_date"]} - {row["date"]} - {ticker:5} - '
+                        message += f'${buy_price:.2f} -> ${price:.2f}'
                         self.report(message, report_each_trade)
                         del portfolio[ticker]
                 possible_position_count = max_positions - len(portfolio)
                 if possible_position_count > 0:
 
                     def action_filter(t):
-                        return t not in portfolio and actions[t]['index'] == 1
+                        return t not in portfolio and actions[t]['index'] == Actions.Buy
 
                     def action_sort(t):
                         return actions[t]['value']
@@ -118,25 +126,62 @@ class Trader:
                         if ticker in portfolio:
                             continue
                         action = actions[ticker]
-                        if action['index'] != 1:
+                        if action['index'] != Actions.Buy:
                             continue
                         price = row[f'{ticker}_close']
                         possible_position_investment = investment / possible_position_count
                         if possible_position_investment > price + self.order_fee:
                             count = int(possible_position_investment / price)
                             if count > 0:
-                                portfolio[ticker] = {'buy_price': price, 'count': count, 'last_price': price}
+                                portfolio[ticker] = {
+                                    'buy_date': row['date'],
+                                    'buy_price': price,
+                                    'count': count,
+                                    'last_price': price
+                                }
                                 investment -= self.order_fee
                                 investment -= count * price
-                                message = f'{row["date"]} - {ticker:5} - buy  '
-                                message += f'{count:5} x ${price:7.2f} = ${count * price:10.2f}'
-                                self.report(message, report_each_trade)
             new_investment = self.calculate_current_investment(investment, portfolio, row)
             investments.append(new_investment)
             gain_loss.append(total_gain_loss)
 
         row = quotes.iloc[len(quotes) - 1]
-        for ticker, position in portfolio.items():
+        investment, total_gain_loss = \
+            self.clear_positions(
+                portfolio,
+                row,
+                investment,
+                total_gain_loss,
+                report_each_trade)
+
+        investments.append(investment)
+        gain_loss.append(total_gain_loss)
+        message = f'Total '
+        message += f'${self.start_capital:10.2f} => ${investment:10.2f} = ${investment - self.start_capital:10.2f}'
+        self.report(message, True)
+
+        return message, investments, gain_loss
+
+    def calculate_position_gain_loss(self, ticker, position, row):
+        price = row[f'{ticker}_close']
+        if not price > 0.0:
+            price = position['last_price']
+        count = position['count']
+        buy_price = position['buy_price']
+        buy_in = count * buy_price
+        sell_out = count * price
+        earnings = sell_out - buy_in
+        if earnings > 0.0:
+            earnings -= earnings * self.tax_rate
+        gain_loss = earnings
+        gain_loss -= self.order_fee
+        returns = ((gain_loss / buy_in) - 1.0) * 100.0
+        return returns
+
+    def clear_positions(self, portfolio, row, investment, gain_loss, report_each_trade):
+        tickers = [ticker for ticker in portfolio.keys()]
+        for ticker in tickers:
+            position = portfolio[ticker]
             price = row[f'{ticker}_close']
             if not price > 0.0:
                 price = position['last_price']
@@ -149,17 +194,12 @@ class Trader:
                 tax = earnings * self.tax_rate
                 investment -= tax
                 earnings -= tax
-            message = f'{row["date"]} - {ticker:5} - sell '
-            message += f'{count:5} x ${price:7.2f} = ${count * price:10.2f} -> clear positions'
+            gain_loss += earnings
+            message = f'{position["buy_date"]} - {row["date"]} - {ticker:5} - '
+            message += f'${buy_price:.2f} -> ${price:.2f} (clear position)'
             self.report(message, report_each_trade)
-
-        investments.append(investment)
-        gain_loss.append(total_gain_loss)
-        message = f'Total '
-        message += f'${self.start_capital:10.2f} => ${investment:10.2f} = ${investment - self.start_capital:10.2f}'
-        self.report(message, True)
-
-        return message, investments, gain_loss
+            del portfolio[ticker]
+        return investment, gain_loss
 
     def calculate_actions(self, agent, tickers, portfolio, quotes, row, index):
         features, eval_tickers = self.calculate_features(tickers, portfolio, quotes, row, index)
