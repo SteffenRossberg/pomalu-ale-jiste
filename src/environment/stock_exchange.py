@@ -75,6 +75,8 @@ class StockExchange(gym.Env):
         pass
 
     def seed(self, seed=None):
+        if seed is None:
+            seed = 9999
         self.np_random, seed1 = seeding.np_random(seed)
         seed2 = seeding.hash_seed(seed1 + 1) % 2 ** 31
         return [seed1, seed2]
