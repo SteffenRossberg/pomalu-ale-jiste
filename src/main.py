@@ -168,17 +168,26 @@ if args.train_decision_maker > 0:
                                                  sample_days,
                                                  train_start_date,
                                                  train_end_date,
-                                                 reset_on_close=False)
+                                                 reset_on_close=True)
+    print(f"Train decision maker Skip-Sell (single Trade) ...")
+    stock_exchange.train_level = TrainingLevels.Skip | TrainingLevels.Sell
+    gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
+    print("Reload decision maker with best training result after training ...")
+    best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
+    print(f"Seeds: {stock_exchange.seeds}")
 
-    stock_exchange.train_level = 0
-    for train_level in [
-        TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
-    ]:
-        print(f"Train decision maker at level {train_level} ...")
-        stock_exchange.train_level = train_level
-        gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
-        print("Reload decision maker with best training result after training ...")
-        best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
+    # print("Prepare stock exchange environment ...")
+    # stock_exchange = StockExchange.from_provider(provider,
+    #                                              sample_days,
+    #                                              train_start_date,
+    #                                              train_end_date,
+    #                                              reset_on_close=False)
+    # print(f"Train decision maker Buy-Sell (full epoch) ...")
+    # stock_exchange.train_level = TrainingLevels.Buy | TrainingLevels.Sell
+    # gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
+    # print("Reload decision maker with best training result after training ...")
+    # best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
+    # print(f"Seeds: {stock_exchange.seeds}")
 
 all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
                                                             sample_days,
@@ -197,7 +206,7 @@ message, limit_all_investments, limit_all_gain_loss = \
         decision_maker,
         all_quotes,
         all_tickers,
-        False,
+        True,
         provider.tickers,
         max_positions=max_limit_all_positions)
 result += f'\nTrade Portfolio (max {int(len(provider.tickers) / 3)} stocks): {message}'
