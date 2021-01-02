@@ -32,8 +32,6 @@ class Gym:
             manager.save_net(f'{name}.encoder', agent.encoder, loss=loss)
             manager.save_net(f'{name}.decoder', agent.decoder, loss=loss)
             manager.save_net(f'snapshots/{name}.autoencoder.{loss:.7f}', agent, optimizer, loss=loss)
-            manager.save_net(f'snapshots/{name}.encoder.{loss:.7f}', agent.encoder, loss=loss)
-            manager.save_net(f'snapshots/{name}.decoder.{loss:.7f}', agent.decoder, loss=loss)
 
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.autoencoder', loss, is_saved)
