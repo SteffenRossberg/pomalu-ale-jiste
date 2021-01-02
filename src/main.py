@@ -96,17 +96,27 @@ buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(provide
                                                                          end_date=train_end_date)
 
 if args.train_detectors > 0:
-    print("Train buyer samples detector ...")
-    gym.train_auto_encoder('buyer', buyer, buyer_optimizer, buy_samples, buyer_loss)
+    while True:
+        print("Train buyer samples detector ...")
+        gym.train_auto_encoder('buyer', buyer, buyer_optimizer, buy_samples, buyer_loss)
+        print("Reload buyer samples detector with best training result after training ...")
+        buyer_loss = manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
+        if buyer_loss < 0.003:
+            break
+        # train result is not good enough, simply re-create a new buyer and try it again...
+        buyer, buyer_optimizer = manager.create_auto_encoder(sample_days)
+        buyer_loss = 100.0
 
-    print("Train seller samples detector ...")
-    gym.train_auto_encoder('seller', seller, seller_optimizer, sell_samples, seller_loss)
-
-    print("Reload buyer samples detector with best training result after training ...")
-    manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
-
-    print("Reload seller samples detector with best training result after training ...")
-    manager.load_net('seller.autoencoder', seller, seller_optimizer)
+    while True:
+        print("Train seller samples detector ...")
+        gym.train_auto_encoder('seller', seller, seller_optimizer, sell_samples, seller_loss)
+        print("Reload seller samples detector with best training result after training ...")
+        seller_loss = manager.load_net('seller.autoencoder', seller, seller_optimizer)
+        if seller_loss < 0.003:
+            break
+        # train result is not good enough, simply re-create a new seller and try it again...
+        seller, seller_optimizer = manager.create_auto_encoder(sample_days)
+        seller_loss = 100.0
 
 if args.train_classifier > 0:
     print("Deactivate buyer samples detector parameters ...")
@@ -126,14 +136,19 @@ if args.train_classifier > 0:
     classifier_none_labels = [0 for _ in range(len(none_samples))]
     classifier_none_labels = np.array(classifier_none_labels)
 
-    print("Train trader classifier ...")
-    gym.train_classifier('trader', classifier, classifier_optimizer,
-                         classifier_features, classifier_labels,
-                         classifier_none_features, classifier_none_labels,
-                         classifier_loss, max_steps=1000)
-
-    print("Reload classifier with best training result after training ...")
-    manager.load_net('trader.classifier', classifier, classifier_optimizer)
+    while True:
+        print("Train trader classifier ...")
+        gym.train_classifier('trader', classifier, classifier_optimizer,
+                             classifier_features, classifier_labels,
+                             classifier_none_features, classifier_none_labels,
+                             classifier_loss, max_steps=1000)
+        print("Reload classifier with best training result after training ...")
+        classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
+        if classifier_loss < 0.4:
+            break
+        # train result is not good enough, simply re-create a new classifier and try it again...
+        classifier, classifier_optimizer = manager.create_classifier(buyer, seller)
+        classifier_loss = 100.0
 
 if args.train_decision_maker > 0:
     print("Deactivate buyer samples detector parameters ...")
@@ -156,10 +171,9 @@ if args.train_decision_maker > 0:
                                                  reset_on_close=False)
 
     stock_exchange.train_level = 0
-    for train_level in [TrainingLevels.Skip,
-                        TrainingLevels.Skip | TrainingLevels.Buy,
-                        TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold,
-                        TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell]:
+    for train_level in [
+        TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
+    ]:
         print(f"Train decision maker at level {train_level} ...")
         stock_exchange.train_level = train_level
         gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
