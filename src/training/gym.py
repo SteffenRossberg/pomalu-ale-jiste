@@ -22,7 +22,7 @@ class Gym:
         self.RL_EPSILON_STOP = 0.1
         self.RL_EPSILON_STEPS = 1_000_000
         self.RL_REWARD_STEPS = 2
-        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 30
+        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 100
         self.RL_MAX_LEARN_RESULT_CHANGE = 100.0
 
     def train_auto_encoder(self, name, agent, optimizer, features, min_loss, max_steps=100, batch_size=5000):
@@ -31,6 +31,9 @@ class Gym:
             manager.save_net(f'{name}.autoencoder', agent, optimizer, loss=loss)
             manager.save_net(f'{name}.encoder', agent.encoder, loss=loss)
             manager.save_net(f'{name}.decoder', agent.decoder, loss=loss)
+            manager.save_net(f'snapshots/{name}.autoencoder.{loss:.7f}', agent, optimizer, loss=loss)
+            manager.save_net(f'snapshots/{name}.encoder.{loss:.7f}', agent.encoder, loss=loss)
+            manager.save_net(f'snapshots/{name}.decoder.{loss:.7f}', agent.decoder, loss=loss)
 
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.autoencoder', loss, is_saved)
@@ -45,6 +48,7 @@ class Gym:
 
         def save(manager, loss):
             manager.save_net(f'{name}.classifier', agent, optimizer, loss=loss)
+            manager.save_net(f'snapshots/{name}.classifier.{loss:.7f}', agent, optimizer, loss=loss)
 
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.classifier', loss, is_saved)
@@ -111,6 +115,7 @@ class Gym:
                              stock_exchange):
         def save(manager, loss_value):
             manager.save_net(f'{name}.decision_maker', model, optimizer, loss=loss_value)
+            manager.save_net(f'snapshots/{name}.decision_maker.{loss_value:.7f}', model, optimizer, loss=loss_value)
 
         criterion = nn.MSELoss()
         target_net = TargetNet(model)
@@ -151,7 +156,6 @@ class Gym:
                     learn_step = 0
                     if best_mean_val > self.RL_MAX_LEARN_RESULT_CHANGE:
                         break
-                    target_net.sync()
                 else:
                     print(f"{step_index:6}:{learn_step:4}:{stock_exchange.train_level} " +
                           f"Mean value {mean_val:.7f}")

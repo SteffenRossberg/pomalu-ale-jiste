@@ -19,7 +19,7 @@ class NetManager:
         return self.net_device
 
     def save_net(self, file_name, net, optimizer=None, loss=100.0):
-        os.makedirs(f'{self.data_directory}/networks', exist_ok=True)
+        os.makedirs(f'{self.data_directory}/networks/snapshots', exist_ok=True)
         file_path = f'{self.data_directory}/networks/{file_name}.pt'
         data = {
             'net': net.state_dict(),
