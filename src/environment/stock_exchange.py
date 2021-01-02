@@ -2,7 +2,7 @@ import gym
 import gym.spaces
 from gym.utils import seeding
 import numpy as np
-from src.environment.actions import Actions
+from src.environment.enums import Actions, TrainingLevels
 from src.preparation.preparator import DataPreparator
 from src.environment.portfolio_state import PortfolioState
 
@@ -21,6 +21,7 @@ class StockExchange(gym.Env):
                  days,
                  reset_on_close=True,
                  random_offset_on_reset=True,
+                 seed=None,
                  start_investment=DEFAULT_START_INVESTMENT,
                  trading_fees=DEFAULT_TRADING_FEES,
                  tax_rate=DEFAULT_TAX_RATE):
@@ -31,14 +32,19 @@ class StockExchange(gym.Env):
         self.action_space = gym.spaces.Discrete(n=3)
         self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=self._state.shape, dtype=np.float32)
         self.random_offset_on_reset = random_offset_on_reset
-        self.seed()
+        self._seeds = None
+        self.seed(seed)
 
     @property
-    def train_level(self) -> int:
+    def seeds(self):
+        return self._seeds
+
+    @property
+    def train_level(self) -> TrainingLevels:
         return self._state.train_level
 
     @train_level.setter
-    def train_level(self, value: int):
+    def train_level(self, value: TrainingLevels):
         self._state.train_level = value
 
     def reset(self):
@@ -77,6 +83,10 @@ class StockExchange(gym.Env):
     def seed(self, seed=None):
         self.np_random, seed1 = seeding.np_random(seed)
         seed2 = seeding.hash_seed(seed1 + 1) % 2 ** 31
+        if self._seeds is None:
+            self._seeds = (seed1, seed2)
+        else:
+            seed1, seed2 = self._seeds
         return [seed1, seed2]
 
     @classmethod
