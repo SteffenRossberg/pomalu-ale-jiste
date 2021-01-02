@@ -22,39 +22,94 @@ class Gym:
         self.RL_EPSILON_STOP = 0.1
         self.RL_EPSILON_STEPS = 1_000_000
         self.RL_REWARD_STEPS = 2
-        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 50
-        self.RL_MAX_LEARN_RESULT_CHANGE = 72.0
+        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 30
 
-    def train_auto_encoder(self, name, agent, optimizer, features, min_loss, max_steps=100, batch_size=5000):
+    def train_auto_encoder(
+            self,
+            name,
+            agent,
+            optimizer,
+            features,
+            min_loss,
+            max_steps=100,
+            batch_size=5000,
+            stop_predicate=None):
 
         def save(manager, loss):
             manager.save_net(f'{name}.autoencoder', agent, optimizer, loss=loss)
             manager.save_net(f'{name}.encoder', agent.encoder, loss=loss)
             manager.save_net(f'{name}.decoder', agent.decoder, loss=loss)
+            manager.save_net(f'snapshots/{name}.autoencoder.{loss:.7f}', agent, optimizer, loss=loss)
 
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.autoencoder', loss, is_saved)
 
         objective = nn.MSELoss()
-        self.train(agent, optimizer, objective, features, features, min_loss, max_steps, batch_size, save, output)
+        self.train(
+            agent,
+            optimizer,
+            objective,
+            features,
+            features,
+            min_loss,
+            max_steps,
+            batch_size,
+            save,
+            output,
+            stop_predicate)
 
-    def train_classifier(self, name, agent, optimizer,
-                         signal_features, signal_labels,
-                         none_signal_features, none_signal_labels,
-                         min_loss, max_steps=100, batch_size=50000):
+    def train_classifier(
+            self,
+            name,
+            agent,
+            optimizer,
+            signal_features,
+            signal_labels,
+            none_signal_features,
+            none_signal_labels,
+            min_loss,
+            max_steps=100,
+            batch_size=50000,
+            stop_predicate=None):
 
         def save(manager, loss):
             manager.save_net(f'{name}.classifier', agent, optimizer, loss=loss)
+            manager.save_net(f'snapshots/{name}.classifier.{loss:.7f}', agent, optimizer, loss=loss)
 
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.classifier', loss, is_saved)
 
         objective = nn.CrossEntropyLoss()
-        self.train(agent, optimizer, objective, signal_features, signal_labels, min_loss, max_steps, batch_size,
-                   save, output, none_signal_features, none_signal_labels)
+        self.train(
+            agent,
+            optimizer,
+            objective,
+            signal_features,
+            signal_labels,
+            min_loss,
+            max_steps,
+            batch_size,
+            save,
+            output,
+            none_signal_features,
+            none_signal_labels,
+            stop_predicate)
 
-    def train(self, agent, optimizer, objective, features, labels, min_loss, max_steps, batch_size, save, output,
-              none_features=None, none_labels=None):
+    def train(
+            self,
+            agent,
+            optimizer,
+            objective,
+            features,
+            labels,
+            min_loss,
+            max_steps,
+            batch_size,
+            save,
+            output,
+            none_features=None,
+            none_labels=None,
+            stop_predicate=None):
         step = 0
         epoch = 0
         while True:
@@ -66,13 +121,24 @@ class Gym:
                 step = 0
                 save(self.manager, min_loss)
                 output(epoch, step, min_loss, True)
+                if stop_predicate is not None and stop_predicate(min_loss):
+                    return
             elif max_steps > step:
                 output(epoch, step, agent_loss, False)
                 step += 1
             else:
                 return
 
-    def train_run(self, features, labels, none_features, none_labels, agent, agent_optimizer, objective, batch_size):
+    def train_run(
+            self,
+            features,
+            labels,
+            none_features,
+            none_labels,
+            agent,
+            agent_optimizer,
+            objective,
+            batch_size):
         if none_features is not None and none_labels is not None:
             random = torch.randperm(len(none_features))
             none_features = torch.from_numpy(none_features)[random]
@@ -103,14 +169,17 @@ class Gym:
         message = f"{epoch:4} - {step:4} - {name}: {loss:.7f}{' ... saved' if is_saved else ''}"
         print(message)
 
-    def train_decision_maker(self,
-                             name,
-                             model,
-                             optimizer,
-                             best_mean_val,
-                             stock_exchange):
+    def train_decision_maker(
+            self,
+            name,
+            model,
+            optimizer,
+            best_mean_val,
+            stock_exchange):
+
         def save(manager, loss_value):
             manager.save_net(f'{name}.decision_maker', model, optimizer, loss=loss_value)
+            manager.save_net(f'snapshots/{name}.decision_maker.{loss_value:.7f}', model, optimizer, loss=loss_value)
 
         criterion = nn.MSELoss()
         target_net = TargetNet(model)
@@ -144,14 +213,15 @@ class Gym:
                 mean_val = self.calculate_values_of_states(evaluation_states, model)
                 if best_mean_val is None or best_mean_val < mean_val:
                     if best_mean_val is not None:
-                        print(f"{step_index:6}:{learn_step:4} Best mean value updated {best_mean_val:.7f} -> {mean_val:.7f}")
+                        print(f"{step_index:6}:{learn_step:4}:{stock_exchange.train_level} " +
+                              f"Mean value updated {best_mean_val:.7f} -> {mean_val:.7f}")
                     best_mean_val = mean_val
                     save(self.manager, best_mean_val)
                     learn_step = 0
-                    if best_mean_val > self.RL_MAX_LEARN_RESULT_CHANGE:
-                        break
+                    target_net.sync()
                 else:
-                    print(f"{step_index:6}:{learn_step:4} Mean value {mean_val:.7f}")
+                    print(f"{step_index:6}:{learn_step:4}:{stock_exchange.train_level} " +
+                          f"Mean value {mean_val:.7f}")
                     learn_step += 1
 
             optimizer.zero_grad()
@@ -167,7 +237,13 @@ class Gym:
             if step_index % self.RL_TARGET_NET_SYNC == 0:
                 target_net.sync()
 
-    def calculate_loss(self, batch, model, target_model, criterion, gamma):
+    def calculate_loss(
+            self,
+            batch,
+            model,
+            target_model,
+            criterion,
+            gamma):
         states, actions, rewards, dones, next_states = self.unpack_batch(batch)
 
         states_v = torch.tensor(states).to(self.device)
