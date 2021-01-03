@@ -10,17 +10,17 @@ from src.networks.decision_maker import DecisionMaker
 
 class NetManager:
 
-    def __init__(self, device, data_directory='data'):
+    def __init__(self, device, data_directory='data/networks'):
         self.net_device = device
         self.data_directory = data_directory
+        os.makedirs(f'{self.data_directory}', exist_ok=True)
 
     @property
     def device(self):
         return self.net_device
 
     def save_net(self, file_name, net, optimizer=None, loss=100.0):
-        os.makedirs(f'{self.data_directory}/networks/snapshots', exist_ok=True)
-        file_path = f'{self.data_directory}/networks/{file_name}.pt'
+        file_path = f'{self.data_directory}/{file_name}.pt'
         data = {
             'net': net.state_dict(),
             'loss': loss
@@ -30,8 +30,7 @@ class NetManager:
         torch.save(data, file_path)
 
     def load_net(self, file_name, net, optimizer=None, default_loss=100.0):
-        os.makedirs(f'{self.data_directory}/networks', exist_ok=True)
-        file_path = f'{self.data_directory}/networks/{file_name}.pt'
+        file_path = f'{self.data_directory}/{file_name}.pt'
         loss = default_loss
         if os.path.exists(file_path):
             data = torch.load(file_path)
@@ -42,19 +41,22 @@ class NetManager:
             loss = float(data['loss'])
         return loss
 
-    def create_auto_encoder(self, days):
+    def create_auto_encoder(self, days, net_name):
         encoder = Encoder(input_shape=(days, 4), output_shape=days).to(self.device)
         decoder = Decoder(input_shape=days, output_shape=(days, 4)).to(self.device)
         auto_encoder = AutoEncoder(encoder, decoder).to(self.device)
         optimizer = optim.Adam(auto_encoder.parameters())
+        self.save_net(f'init.{net_name}', auto_encoder, optimizer)
         return auto_encoder, optimizer
 
-    def create_classifier(self, buyer, seller):
-        agent = Classifier(buyer, seller).to(self.device)
-        optimizer = optim.Adam(agent.parameters())
-        return agent, optimizer
+    def create_classifier(self, buyer, seller, net_name):
+        classifier = Classifier(buyer, seller).to(self.device)
+        optimizer = optim.Adam(classifier.parameters())
+        self.save_net(f'init.{net_name}', classifier, optimizer)
+        return classifier, optimizer
 
-    def create_decision_maker(self, classifier, state_size=3):
+    def create_decision_maker(self, classifier, net_name, state_size=3):
         agent = DecisionMaker(classifier, state_size=state_size).to(self.device)
         optimizer = optim.Adam(agent.parameters(), lr=0.0001)
+        self.save_net(f'init.{net_name}', agent, optimizer)
         return agent, optimizer

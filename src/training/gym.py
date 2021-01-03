@@ -39,7 +39,6 @@ class Gym:
             manager.save_net(f'{name}.autoencoder', agent, optimizer, loss=loss)
             manager.save_net(f'{name}.encoder', agent.encoder, loss=loss)
             manager.save_net(f'{name}.decoder', agent.decoder, loss=loss)
-            manager.save_net(f'snapshots/{name}.autoencoder.{loss:.7f}', agent, optimizer, loss=loss)
 
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.autoencoder', loss, is_saved)
@@ -74,7 +73,6 @@ class Gym:
 
         def save(manager, loss):
             manager.save_net(f'{name}.classifier', agent, optimizer, loss=loss)
-            manager.save_net(f'snapshots/{name}.classifier.{loss:.7f}', agent, optimizer, loss=loss)
 
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.classifier', loss, is_saved)
@@ -179,7 +177,6 @@ class Gym:
 
         def save(manager, loss_value):
             manager.save_net(f'{name}.decision_maker', model, optimizer, loss=loss_value)
-            manager.save_net(f'snapshots/{name}.decision_maker.{loss_value:.7f}', model, optimizer, loss=loss_value)
 
         criterion = nn.MSELoss()
         target_net = TargetNet(model)
