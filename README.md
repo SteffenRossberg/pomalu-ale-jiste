@@ -3,6 +3,9 @@
 ... I want to play with an AI that uses the PyTorch framework to
 chew through some time series like stock prices.
 
+![pomalu-ale-jiste](docs/Trader.vs.MSCI.World.ETF.png)
+*Screenshot of pomalu-ale-jiste v0.0.1 release
+
 ## my way I will go ...
 
 First, I want to create a simple auto-encoder that remembers possible
@@ -30,8 +33,9 @@ I will use the Tiingo data service to retrieve historical end of day (EOD)
 data for training and testing purposes.
 Tiingo offers a free subscription that is limited by, for example, volume
 and number of requests. It further supports REST and Websocket APIs
-to get the data as we need it. Long story short, Tiingo just seems good
-enough for this purpose.
+to get the data as I need it. Long story short, Tiingo just seems perfect
+for this purpose.
+
 You can find more details here: https://api.tiingo.com
 
 ## WARNING
