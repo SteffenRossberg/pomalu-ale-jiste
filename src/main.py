@@ -114,13 +114,23 @@ def train(training_day):
                                                                              start_date=train_start_date,
                                                                              end_date=train_end_date)
 
+    with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'wt') as train_file:
+        train_file.write(f"Id: {training_day:%Y%m%d.%H%M%S}\n")
+
     if args.train_detectors > 0:
+        min_buyer_loss = 0.0021
         while True:
             print("Train buyer samples detector ...")
-            gym.train_auto_encoder('buyer', buyer, buyer_optimizer, buy_samples, buyer_loss)
+            gym.train_auto_encoder(
+                'buyer',
+                buyer,
+                buyer_optimizer,
+                buy_samples,
+                buyer_loss,
+                stop_predicate=lambda loss: loss < min_buyer_loss)
             print("Reload buyer samples detector with best training result after training ...")
             buyer_loss = manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
-            if buyer_loss < 0.003:
+            if buyer_loss < min_buyer_loss:
                 break
             # train result is not good enough, simply re-create a new buyer and try it again...
             buyer, buyer_optimizer = \
@@ -129,12 +139,22 @@ def train(training_day):
                     'buyer.autoencoder')
             buyer_loss = 100.0
 
+        with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
+            train_file.write(f"buyer.autoencoder: {buyer_loss:.7f}\n")
+
+        min_seller_loss = 0.0021
         while True:
             print("Train seller samples detector ...")
-            gym.train_auto_encoder('seller', seller, seller_optimizer, sell_samples, seller_loss)
+            gym.train_auto_encoder(
+                'seller',
+                seller,
+                seller_optimizer,
+                sell_samples,
+                seller_loss,
+                stop_predicate=lambda loss: loss < min_seller_loss)
             print("Reload seller samples detector with best training result after training ...")
             seller_loss = manager.load_net('seller.autoencoder', seller, seller_optimizer)
-            if seller_loss < 0.003:
+            if seller_loss < min_seller_loss:
                 break
             # train result is not good enough, simply re-create a new seller and try it again...
             seller, seller_optimizer = \
@@ -142,6 +162,9 @@ def train(training_day):
                     sample_days,
                     'seller.autoencoder')
             seller_loss = 100.0
+
+        with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
+            train_file.write(f"seller.autoencoder: {seller_loss:.7f}\n")
 
     if args.train_classifier > 0:
         print("Deactivate buyer samples detector parameters ...")
@@ -161,15 +184,23 @@ def train(training_day):
         classifier_none_labels = [0 for _ in range(len(none_samples))]
         classifier_none_labels = np.array(classifier_none_labels)
 
+        min_classifier_loss = 0.45
         while True:
             print("Train trader classifier ...")
-            gym.train_classifier('trader', classifier, classifier_optimizer,
-                                 classifier_features, classifier_labels,
-                                 classifier_none_features, classifier_none_labels,
-                                 classifier_loss, max_steps=1000)
+            gym.train_classifier(
+                'trader',
+                classifier,
+                classifier_optimizer,
+                classifier_features,
+                classifier_labels,
+                classifier_none_features,
+                classifier_none_labels,
+                classifier_loss,
+                max_steps=50,
+                stop_predicate=lambda loss: loss < min_classifier_loss)
             print("Reload classifier with best training result after training ...")
             classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
-            if classifier_loss < 0.4:
+            if classifier_loss < min_classifier_loss:
                 break
             # train result is not good enough, simply re-create a new classifier and try it again...
             classifier, classifier_optimizer = \
@@ -178,6 +209,9 @@ def train(training_day):
                     seller,
                     'trader.classifier')
             classifier_loss = 100.0
+
+        with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
+            train_file.write(f"trader.classifier: {classifier_loss:.7f}\n")
 
     if args.train_decision_maker > 0:
         print("Deactivate buyer samples detector parameters ...")
@@ -199,14 +233,14 @@ def train(training_day):
                                                      train_end_date,
                                                      reset_on_close=True)
         print(f"Train decision maker Skip-Sell (single Trade) ...")
-        stock_exchange.train_level = TrainingLevels.Buy | TrainingLevels.Sell
+        stock_exchange.train_level = TrainingLevels.Skip | TrainingLevels.Sell
         gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
         print("Reload decision maker with best training result after training ...")
         best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
         print(f"Seeds: {stock_exchange.seeds}")
-        with open(f'data/{training_day:%Y%m%d.%H%M%S}.train_seeds.txt', 'wt') as seeds_file:
-            seeds_file.write(f"Stock Exchange Seeds: {stock_exchange.seeds}\n")
-            seeds_file.write(f"Best mean value: {best_mean_val:.7f}\n")
+        with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
+            train_file.write(f"Stock Exchange Seeds: {stock_exchange.seeds}\n")
+            train_file.write(f"Trader Best mean value: {best_mean_val:.7f}\n")
 
     all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
                                                                 sample_days,
@@ -249,6 +283,8 @@ def train(training_day):
     result += f'\nBuy % Hold All ({len(provider.tickers)} stocks): {message}'
 
     print(result)
+    with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
+        train_file.write(f"\n{result}")
 
     index_ticker = 'URTH'
     index_title = provider.etf_tickers[index_ticker]
