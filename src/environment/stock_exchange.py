@@ -21,7 +21,7 @@ class StockExchange(gym.Env):
                  days,
                  reset_on_close=True,
                  random_offset_on_reset=True,
-                 seed=None,
+                 seeds=None,
                  start_investment=DEFAULT_START_INVESTMENT,
                  trading_fees=DEFAULT_TRADING_FEES,
                  tax_rate=DEFAULT_TAX_RATE):
@@ -32,8 +32,8 @@ class StockExchange(gym.Env):
         self.action_space = gym.spaces.Discrete(n=3)
         self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=self._state.shape, dtype=np.float32)
         self.random_offset_on_reset = random_offset_on_reset
-        self._seeds = None
-        self.seed(seed)
+        self._seeds = seeds
+        self.seed()
 
     @property
     def seeds(self):
