@@ -170,24 +170,11 @@ if args.train_decision_maker > 0:
                                                  train_end_date,
                                                  reset_on_close=True)
     print(f"Train decision maker Skip-Sell (single Trade) ...")
-    stock_exchange.train_level = TrainingLevels.Skip | TrainingLevels.Sell
+    stock_exchange.train_level = TrainingLevels.Buy | TrainingLevels.Sell
     gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
     print("Reload decision maker with best training result after training ...")
     best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
     print(f"Seeds: {stock_exchange.seeds}")
-
-    # print("Prepare stock exchange environment ...")
-    # stock_exchange = StockExchange.from_provider(provider,
-    #                                              sample_days,
-    #                                              train_start_date,
-    #                                              train_end_date,
-    #                                              reset_on_close=False)
-    # print(f"Train decision maker Buy-Sell (full epoch) ...")
-    # stock_exchange.train_level = TrainingLevels.Buy | TrainingLevels.Sell
-    # gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
-    # print("Reload decision maker with best training result after training ...")
-    # best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
-    # print(f"Seeds: {stock_exchange.seeds}")
 
 all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
                                                             sample_days,
