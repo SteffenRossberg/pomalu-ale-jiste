@@ -33,7 +33,8 @@ class Gym:
             min_loss,
             max_steps=100,
             batch_size=5000,
-            stop_predicate=None):
+            stop_predicate=None,
+            stop_on_count=10):
 
         def save(manager, loss):
             manager.save_net(f'{name}.autoencoder', agent, optimizer, loss=loss)
@@ -55,7 +56,8 @@ class Gym:
             batch_size,
             save,
             output,
-            stop_predicate)
+            stop_predicate=stop_predicate,
+            stop_on_count=stop_on_count)
 
     def train_classifier(
             self,
@@ -69,7 +71,8 @@ class Gym:
             min_loss,
             max_steps=100,
             batch_size=50000,
-            stop_predicate=None):
+            stop_predicate=None,
+            stop_on_count=10):
 
         def save(manager, loss):
             manager.save_net(f'{name}.classifier', agent, optimizer, loss=loss)
@@ -91,7 +94,8 @@ class Gym:
             output,
             none_signal_features,
             none_signal_labels,
-            stop_predicate)
+            stop_predicate=stop_predicate,
+            stop_on_count=stop_on_count)
 
     def train(
             self,
@@ -107,19 +111,32 @@ class Gym:
             output,
             none_features=None,
             none_labels=None,
-            stop_predicate=None):
+            stop_predicate=None,
+            stop_on_count=10):
         step = 0
         epoch = 0
+        counter = 0
         while True:
             epoch += 1
-            agent_loss = self.train_run(features, labels, none_features, none_labels, agent, optimizer, objective,
-                                        batch_size)
+            agent_loss = \
+                self.train_run(
+                    features,
+                    labels,
+                    none_features,
+                    none_labels,
+                    agent,
+                    optimizer,
+                    objective,
+                    batch_size)
+            agent_loss = float(agent_loss)
             if agent_loss < min_loss:
-                min_loss = float(agent_loss)
+                min_loss = agent_loss
                 step = 0
                 save(self.manager, min_loss)
                 output(epoch, step, min_loss, True)
-                if stop_predicate is not None and stop_predicate(min_loss):
+            elif stop_predicate is not None and stop_predicate(agent_loss):
+                counter += 1
+                if counter >= stop_on_count:
                     return
             elif max_steps > step:
                 output(epoch, step, agent_loss, False)
