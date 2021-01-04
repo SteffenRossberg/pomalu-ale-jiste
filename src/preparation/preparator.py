@@ -20,12 +20,15 @@ class DataPreparator:
                     continue
                 quotes['window'] = DataPreparator.calculate_windows(quotes, days, normalize=True)
                 quotes['last_days'] = DataPreparator.calculate_last_days(quotes, days, normalize=True)
+                quotes[['buy', 'sell']] = DataPreparator.calculate_signals(quotes)
                 frames.append({
                     'ticker': ticker,
                     'company': company,
                     'dates': quotes['date'].dt.strftime('%Y-%m-%d').values[days:].tolist(),
                     'windows': [window.tolist() for window in quotes['window'].values[days:]],
                     'prices': quotes['close'].values[days:].tolist(),
+                    'buys': quotes['buy'].fillna(method='ffill').values[days:].tolist(),
+                    'sells': quotes['sell'].fillna(method='ffill').values[days:].tolist(),
                     'last_days': [last_days for last_days in quotes['last_days'].values[days:]]
                 })
             with open(frames_path, 'w') as outfile:
