@@ -96,7 +96,7 @@ def train(training_day):
         manager.create_decision_maker(
             classifier,
             'trader.decision_maker',
-            state_size=3)
+            state_size=7)
     best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer, -100.0)
 
     print("Create trader ...")
@@ -118,7 +118,7 @@ def train(training_day):
         train_file.write(f"Id: {training_day:%Y%m%d.%H%M%S}\n")
 
     if args.train_detectors > 0:
-        min_buyer_loss = 0.0021
+        min_buyer_loss = 0.002
         while True:
             print("Train buyer samples detector ...")
             gym.train_auto_encoder(
@@ -142,7 +142,7 @@ def train(training_day):
         with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
             train_file.write(f"buyer.autoencoder: {buyer_loss:.7f}\n")
 
-        min_seller_loss = 0.0021
+        min_seller_loss = 0.002
         while True:
             print("Train seller samples detector ...")
             gym.train_auto_encoder(
@@ -226,19 +226,23 @@ def train(training_day):
         for parameter in classifier.parameters():
             parameter.requires_grad = False
 
+        reset_on_close = False
+        training_level = TrainingLevels.Buy | TrainingLevels.Sell
         print("Prepare stock exchange environment ...")
         stock_exchange = StockExchange.from_provider(provider,
                                                      sample_days,
                                                      train_start_date,
                                                      train_end_date,
-                                                     reset_on_close=True)
-        print(f"Train decision maker Skip-Sell (single Trade) ...")
-        stock_exchange.train_level = TrainingLevels.Skip | TrainingLevels.Sell
+                                                     reset_on_close=reset_on_close)
+        print(f"Train decision maker {str(training_level)} (single Trade) ...")
+        stock_exchange.train_level = training_level
         gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
         print("Reload decision maker with best training result after training ...")
         best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
         print(f"Seeds: {stock_exchange.seeds}")
         with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
+            train_file.write(f"Train Level: {str(training_level)}\n")
+            train_file.write(f"Reset On Close: {reset_on_close}\n")
             train_file.write(f"Stock Exchange Seeds: {stock_exchange.seeds}\n")
             train_file.write(f"Trader Best mean value: {best_mean_val:.7f}\n")
 
@@ -361,6 +365,6 @@ def train(training_day):
     plt.close()
 
 
-for _ in range(10):
-    today = datetime.now()
-    train(today)
+today = datetime.now()
+train(today)
+
