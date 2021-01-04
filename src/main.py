@@ -215,26 +215,26 @@ def train(training_day):
 
     if args.train_decision_maker > 0:
         print("Deactivate buyer samples detector parameters ...")
-        for parameter in classifier.buyer_auto_encoder.parameters():
+        for parameter in decision_maker.classifier.buyer_auto_encoder.parameters():
             parameter.requires_grad = False
 
         print("Deactivate seller samples detector parameters ...")
-        for parameter in classifier.seller_auto_encoder.parameters():
+        for parameter in decision_maker.classifier.seller_auto_encoder.parameters():
             parameter.requires_grad = False
 
         print("Deactivate classifier parameters ...")
-        for parameter in classifier.parameters():
+        for parameter in decision_maker.classifier.parameters():
             parameter.requires_grad = False
 
         reset_on_close = False
-        training_level = TrainingLevels.Buy | TrainingLevels.Sell
+        training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
         print("Prepare stock exchange environment ...")
         stock_exchange = StockExchange.from_provider(provider,
                                                      sample_days,
                                                      train_start_date,
                                                      train_end_date,
                                                      reset_on_close=reset_on_close)
-        print(f"Train decision maker {str(training_level)} (single Trade) ...")
+        print(f"Train decision maker {str(training_level)} (reset on close = {reset_on_close}) ...")
         stock_exchange.train_level = training_level
         gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
         print("Reload decision maker with best training result after training ...")
