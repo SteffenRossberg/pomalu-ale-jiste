@@ -1,4 +1,5 @@
 import numpy as np
+import math
 from src.environment.enums import Actions, TrainingLevels
 
 
@@ -19,7 +20,6 @@ class PortfolioState:
         self._offset = None
         self._investment = self._start_investment
         self._stock_count = 0
-        self._trade_days = 0
         self._buy_price = 0.0
         self._top_price = 0.0
         self.__train_level = TrainingLevels.Buy
@@ -67,8 +67,8 @@ class PortfolioState:
     def encode(self):
         day_yield = self._frame['prices'][self._offset] / self._frame['prices'][self._offset - 1] - 1.0
         has_stocks = 1.0 if self._stock_count > 0 else 0.0
-        last_day_position = self._frame['last_days'][self._offset][-1]
-        state = np.array([day_yield, has_stocks, last_day_position], dtype=np.float32)
+        last_day_position = np.array(self._frame['last_days'][self._offset], dtype=np.float32)
+        state = np.append(np.array([day_yield, has_stocks], dtype=np.float32), last_day_position)
         price_window = np.array(self._frame['windows'][self._offset], dtype=np.float32).flatten()
         encoded = np.append(price_window, state)
         return encoded
@@ -85,45 +85,51 @@ class PortfolioState:
         reward = 0.0
         done = False
         price = self._frame['prices'][self._offset]
+        buy_price = self._frame['buys'][self._offset]
+        sell_price = self._frame['sells'][self._offset]
         count = int((self._investment - self.trading_fees) / price)
         if action == Actions.Buy and self._stock_count == 0 and count > 0:
             reward -= (self.trading_fees / (count * price)) * 100.0
             if self.__train_level & TrainingLevels.Buy == TrainingLevels.Buy:
-                reward += self.calculate_reward(self._top_price, price)
+                reward += self.calculate_reward(price, buy_price)
             self._investment -= self.trading_fees
             self._investment -= count * price
             self._stock_count = count
             self._buy_price = price
             self._top_price = price
-            self._trade_days = 1
         elif action == Actions.Sell and self._stock_count > 0:
             reward -= (self.trading_fees / (self._stock_count * price)) * 100.0
             if self.__train_level & TrainingLevels.Sell == TrainingLevels.Sell:
-                reward += self.calculate_reward(price, self._buy_price, self._trade_days)
+                reward += self.calculate_reward(price, sell_price)
             self._investment -= self.trading_fees
             self._investment += count * price
             self._investment -= ((count * price) - (count * self._buy_price)) * (self.tax_rate if reward > 0.0 else 1.0)
-            self._trade_days = 0
             self._stock_count = 0
             self._buy_price = 0.0
             self._top_price = price
             done |= self.reset_on_close
         elif action == Actions.SkipOrHold and self._stock_count == 0:
-            self._trade_days += 1
             if self.__train_level & TrainingLevels.Skip == TrainingLevels.Skip:
-                reward += self.calculate_reward(price, self._top_price, 1)
+                reward += self.calculate_reward(price, buy_price)
             self._top_price = price if self._top_price < price else self._top_price
         elif action == Actions.SkipOrHold and self._stock_count > 0:
-            self._trade_days += 1
             if self.__train_level & TrainingLevels.Hold == TrainingLevels.Hold:
-                reward += self.calculate_reward(price, self._buy_price, 1)
+                reward += self.calculate_reward(price, sell_price)
         self._offset += 1
         done |= self._offset >= len(self._frame['windows']) - self._days
         return reward, done
 
-    def calculate_reward(self, price, lower_price, factor=2):
-        returns = ((price / lower_price) - 1.0)
-        returns *= 1.0 - (self.tax_rate if returns > 0.0 else 0.0)
-        returns *= factor
-        reward = returns * 100.0
-        return reward
+    @staticmethod
+    def calculate_reward(price, ideal_price):
+        if not ideal_price > 0.0:
+            return 0.0
+        diff = price - ideal_price
+        diff = diff if diff >= 0.0 else -diff
+        diff_ratio = 1.0 - (diff / ideal_price)
+        if diff_ratio > 0.999:
+            return 10.0
+        if diff_ratio > 0.9975:
+            return 9.0
+        if diff_ratio > 0.995:
+            return 8.0
+        return -5.0
