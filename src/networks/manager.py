@@ -1,9 +1,7 @@
 import torch
 import os
 import torch.optim as optim
-from src.networks.encoder import Encoder
-from src.networks.decoder import Decoder
-from src.networks.autoencoder import AutoEncoder
+from src.networks.encoder import Encoder, Decoder, AutoEncoder
 from src.networks.classifier import Classifier
 from src.networks.decision_maker import DecisionMaker
 
@@ -42,8 +40,8 @@ class NetManager:
         return loss
 
     def create_auto_encoder(self, days, net_name):
-        encoder = Encoder(input_shape=(days, 4), output_shape=days).to(self.device)
-        decoder = Decoder(input_shape=days, output_shape=(days, 4)).to(self.device)
+        encoder = Encoder(input_shape=(days, 4), output_size=days).to(self.device)
+        decoder = Decoder(input_size=days, output_shape=(days, 4)).to(self.device)
         auto_encoder = AutoEncoder(encoder, decoder).to(self.device)
         optimizer = optim.Adam(auto_encoder.parameters())
         file_path = f'{self.data_directory}/init.{net_name}.pt'
