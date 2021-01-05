@@ -22,7 +22,7 @@ class Gym:
         self.RL_EPSILON_STOP = 0.1
         self.RL_EPSILON_STEPS = 1_000_000
         self.RL_REWARD_STEPS = 2
-        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 30
+        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 20
 
     def train_auto_encoder(
             self,
@@ -232,7 +232,6 @@ class Gym:
                     best_mean_val = mean_val
                     save(self.manager, best_mean_val)
                     learn_step = 0
-                    target_net.sync()
                 else:
                     print(f"{step_index:6}:{learn_step:4}:{stock_exchange.train_level} " +
                           f"Mean value {mean_val:.7f}")

@@ -96,7 +96,7 @@ def train(training_day):
         manager.create_decision_maker(
             classifier,
             'trader.decision_maker',
-            state_size=3)
+            state_size=7)
     best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer, -100.0)
 
     print("Create trader ...")
@@ -118,50 +118,28 @@ def train(training_day):
         train_file.write(f"Id: {training_day:%Y%m%d.%H%M%S}\n")
 
     if args.train_detectors > 0:
-        min_buyer_loss = 0.0021
-        while True:
-            print("Train buyer samples detector ...")
-            gym.train_auto_encoder(
-                'buyer',
-                buyer,
-                buyer_optimizer,
-                buy_samples,
-                buyer_loss,
-                stop_predicate=lambda loss: loss < min_buyer_loss)
-            print("Reload buyer samples detector with best training result after training ...")
-            buyer_loss = manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
-            if buyer_loss < min_buyer_loss:
-                break
-            # train result is not good enough, simply re-create a new buyer and try it again...
-            buyer, buyer_optimizer = \
-                manager.create_auto_encoder(
-                    sample_days,
-                    'buyer.autoencoder')
-            buyer_loss = 100.0
+        print("Train buyer samples detector ...")
+        gym.train_auto_encoder(
+            'buyer',
+            buyer,
+            buyer_optimizer,
+            buy_samples,
+            buyer_loss)
+        print("Reload buyer samples detector with best training result after training ...")
+        buyer_loss = manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
 
         with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
             train_file.write(f"buyer.autoencoder: {buyer_loss:.7f}\n")
 
-        min_seller_loss = 0.0021
-        while True:
-            print("Train seller samples detector ...")
-            gym.train_auto_encoder(
-                'seller',
-                seller,
-                seller_optimizer,
-                sell_samples,
-                seller_loss,
-                stop_predicate=lambda loss: loss < min_seller_loss)
-            print("Reload seller samples detector with best training result after training ...")
-            seller_loss = manager.load_net('seller.autoencoder', seller, seller_optimizer)
-            if seller_loss < min_seller_loss:
-                break
-            # train result is not good enough, simply re-create a new seller and try it again...
-            seller, seller_optimizer = \
-                manager.create_auto_encoder(
-                    sample_days,
-                    'seller.autoencoder')
-            seller_loss = 100.0
+        print("Train seller samples detector ...")
+        gym.train_auto_encoder(
+            'seller',
+            seller,
+            seller_optimizer,
+            sell_samples,
+            seller_loss)
+        print("Reload seller samples detector with best training result after training ...")
+        seller_loss = manager.load_net('seller.autoencoder', seller, seller_optimizer)
 
         with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
             train_file.write(f"seller.autoencoder: {seller_loss:.7f}\n")
@@ -184,61 +162,53 @@ def train(training_day):
         classifier_none_labels = [0 for _ in range(len(none_samples))]
         classifier_none_labels = np.array(classifier_none_labels)
 
-        min_classifier_loss = 0.45
-        while True:
-            print("Train trader classifier ...")
-            gym.train_classifier(
-                'trader',
-                classifier,
-                classifier_optimizer,
-                classifier_features,
-                classifier_labels,
-                classifier_none_features,
-                classifier_none_labels,
-                classifier_loss,
-                max_steps=50,
-                stop_predicate=lambda loss: loss < min_classifier_loss)
-            print("Reload classifier with best training result after training ...")
-            classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
-            if classifier_loss < min_classifier_loss:
-                break
-            # train result is not good enough, simply re-create a new classifier and try it again...
-            classifier, classifier_optimizer = \
-                manager.create_classifier(
-                    buyer,
-                    seller,
-                    'trader.classifier')
-            classifier_loss = 100.0
+        print("Train trader classifier ...")
+        gym.train_classifier(
+            'trader',
+            classifier,
+            classifier_optimizer,
+            classifier_features,
+            classifier_labels,
+            classifier_none_features,
+            classifier_none_labels,
+            classifier_loss,
+            max_steps=20)
+        print("Reload classifier with best training result after training ...")
+        classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
 
         with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
             train_file.write(f"trader.classifier: {classifier_loss:.7f}\n")
 
     if args.train_decision_maker > 0:
         print("Deactivate buyer samples detector parameters ...")
-        for parameter in classifier.buyer_auto_encoder.parameters():
+        for parameter in decision_maker.classifier.buyer_auto_encoder.parameters():
             parameter.requires_grad = False
 
         print("Deactivate seller samples detector parameters ...")
-        for parameter in classifier.seller_auto_encoder.parameters():
+        for parameter in decision_maker.classifier.seller_auto_encoder.parameters():
             parameter.requires_grad = False
 
         print("Deactivate classifier parameters ...")
-        for parameter in classifier.parameters():
+        for parameter in decision_maker.classifier.parameters():
             parameter.requires_grad = False
 
+        reset_on_close = False
+        training_level = TrainingLevels.Skip | TrainingLevels.Sell
         print("Prepare stock exchange environment ...")
         stock_exchange = StockExchange.from_provider(provider,
                                                      sample_days,
                                                      train_start_date,
                                                      train_end_date,
-                                                     reset_on_close=True)
-        print(f"Train decision maker Skip-Sell (single Trade) ...")
-        stock_exchange.train_level = TrainingLevels.Skip | TrainingLevels.Sell
+                                                     reset_on_close=reset_on_close)
+        print(f"Train decision maker {str(training_level)} (reset on close = {reset_on_close}) ...")
+        stock_exchange.train_level = training_level
         gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
         print("Reload decision maker with best training result after training ...")
         best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
         print(f"Seeds: {stock_exchange.seeds}")
         with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
+            train_file.write(f"Train Level: {str(training_level)}\n")
+            train_file.write(f"Reset On Close: {reset_on_close}\n")
             train_file.write(f"Stock Exchange Seeds: {stock_exchange.seeds}\n")
             train_file.write(f"Trader Best mean value: {best_mean_val:.7f}\n")
 
@@ -361,6 +331,8 @@ def train(training_day):
     plt.close()
 
 
-for _ in range(10):
-    today = datetime.now()
-    train(today)
+# today = datetime(2021, 1, 5, 17, 17, 24)
+# today = datetime(2021, 1, 5, 20, 11, 46)
+today = datetime.now()
+train(today)
+
