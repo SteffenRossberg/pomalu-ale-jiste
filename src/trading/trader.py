@@ -84,7 +84,7 @@ class Trader:
                         portfolio[ticker]['last_price'] = row[f'{ticker}_close']
                 # for ticker in portfolio.keys():
                 #     position = portfolio[ticker]
-                #     if self.calculate_position_gain_loss(ticker, position, row) >= 20.0:
+                #     if self.calculate_position_gain_loss(ticker, position, row) >= 5.0:
                 #         if ticker in actions:
                 #             actions[ticker]['index'] = Actions.Sell
                 #         else:
@@ -145,7 +145,7 @@ class Trader:
             investments.append(new_investment)
             gain_loss.append(total_gain_loss)
 
-        row = quotes.iloc[len(quotes) - 1]
+        row = quotes.iloc[-1]
         investment, total_gain_loss = \
             self.clear_positions(
                 portfolio,
