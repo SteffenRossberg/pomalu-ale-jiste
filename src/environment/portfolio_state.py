@@ -123,13 +123,12 @@ class PortfolioState:
     def calculate_reward(price, ideal_price):
         if not ideal_price > 0.0:
             return 0.0
-        diff = price - ideal_price
-        diff = diff if diff >= 0.0 else -diff
+        diff = abs(price - ideal_price)
         diff_ratio = 1.0 - (diff / ideal_price)
         if diff_ratio > 0.999:
             return 10.0
         if diff_ratio > 0.9975:
-            return 9.0
+            return 5.0
         if diff_ratio > 0.995:
-            return 8.0
+            return 2.5
         return -5.0
