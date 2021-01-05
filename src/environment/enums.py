@@ -8,7 +8,7 @@ class Actions(enum.IntEnum):
 
 
 class TrainingLevels(enum.IntFlag):
-    Buy = 1
-    Sell = 2
-    Hold = 4
     Skip = 8
+    Buy = 4
+    Hold = 2
+    Sell = 1
