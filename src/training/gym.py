@@ -22,7 +22,7 @@ class Gym:
         self.RL_EPSILON_STOP = 0.1
         self.RL_EPSILON_STEPS = 1_000_000
         self.RL_REWARD_STEPS = 2
-        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 50
+        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 20
 
     def train_auto_encoder(
             self,
