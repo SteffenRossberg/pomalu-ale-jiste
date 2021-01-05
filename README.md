@@ -33,8 +33,8 @@ I will use the Tiingo data service to retrieve historical end of day (EOD)
 data for training and testing purposes.
 Tiingo offers a free subscription that is limited by, for example, volume
 and number of requests. It further supports REST and Websocket APIs
-to get the data as I need it. Long story short, Tiingo just seems perfect
-for this purpose.
+to get the data as I need it. Long story short, Tiingo just seems to be quite
+perfect for this purpose.
 
 You can find more details here: https://api.tiingo.com
 
