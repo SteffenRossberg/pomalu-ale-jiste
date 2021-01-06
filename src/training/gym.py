@@ -4,6 +4,7 @@ from torch import nn as nn
 from ptan.agent import TargetNet, DQNAgent
 from ptan.actions import EpsilonGreedyActionSelector
 from ptan.experience import ExperienceSourceFirstLast, ExperienceReplayBuffer
+from prometheus_client import Gauge
 
 
 class Gym:
@@ -44,6 +45,13 @@ class Gym:
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.auto.encoder', loss, is_saved)
 
+        best_value_gauge = Gauge(
+            f'train_{name}_auto_encoder_best_value',
+            f'Best value of {name}_auto_encoder training')
+        current_value_gauge = Gauge(
+            f'train_{name}_auto_encoder_current_value',
+            f'Current value of {name}_auto_encoder training')
+
         objective = nn.MSELoss()
         self.train(
             agent,
@@ -56,6 +64,8 @@ class Gym:
             batch_size,
             save,
             output,
+            best_value_gauge,
+            current_value_gauge,
             stop_predicate=stop_predicate,
             stop_on_count=stop_on_count)
 
@@ -80,6 +90,13 @@ class Gym:
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.classifier', loss, is_saved)
 
+        best_value_gauge = Gauge(
+            f'train_{name}_classifier_best_value',
+            f'Best value of {name}.classifier training')
+        current_value_gauge = Gauge(
+            f'train_{name}_classifier_current_value',
+            f'Current value of {name}.classifier training')
+
         objective = nn.CrossEntropyLoss()
         self.train(
             agent,
@@ -92,6 +109,8 @@ class Gym:
             batch_size,
             save,
             output,
+            best_value_gauge,
+            current_value_gauge,
             none_signal_features,
             none_signal_labels,
             stop_predicate=stop_predicate,
@@ -109,6 +128,8 @@ class Gym:
             batch_size,
             save,
             output,
+            best_value_gauge,
+            current_value_gauge,
             none_features=None,
             none_labels=None,
             stop_predicate=None,
@@ -134,6 +155,7 @@ class Gym:
                 step = 0
                 save(self.manager, min_loss)
                 output(epoch, step, min_loss, True)
+                best_value_gauge.set(min_loss)
             elif stop_predicate is not None and stop_predicate(agent_loss):
                 counter += 1
                 if counter >= stop_on_count:
@@ -141,6 +163,7 @@ class Gym:
             elif max_steps > step:
                 output(epoch, step, agent_loss, False)
                 step += 1
+                current_value_gauge.set(agent_loss)
             else:
                 return
 
@@ -190,10 +213,19 @@ class Gym:
             model,
             optimizer,
             best_mean_val,
-            stock_exchange):
+            stock_exchange,
+            stop_predicate=None,
+            stop_on_count=10):
 
         def save(manager, loss_value):
             manager.save_net(f'{name}.decision.maker', model, optimizer, loss=loss_value)
+
+        best_value_gauge = Gauge(
+            f'train_{name}_decision_maker_best_value',
+            f'Best value of {name}.classifier training')
+        current_value_gauge = Gauge(
+            f'train_{name}_decision_maker_current_value',
+            f'Current value of {name}.classifier training')
 
         criterion = nn.MSELoss()
         target_net = TargetNet(model)
@@ -208,7 +240,7 @@ class Gym:
         step_index = 0
         evaluation_states = None
         learn_step = 0
-
+        stop_steps = 0
         while learn_step < self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE:
             step_index += 1
             experience_buffer.populate(1)
@@ -232,10 +264,17 @@ class Gym:
                     best_mean_val = mean_val
                     save(self.manager, best_mean_val)
                     learn_step = 0
+                    best_value_gauge.set(best_mean_val)
                 else:
                     print(f"{step_index:6}:{learn_step:4}:{stock_exchange.train_level} " +
                           f"Mean value {mean_val:.7f}")
                     learn_step += 1
+                    current_value_gauge.set(mean_val)
+                if stop_predicate is not None and stop_predicate(mean_val):
+                    stop_steps += 1
+                    if stop_on_count <= stop_steps:
+                        save(self.manager, mean_val)
+                        break
 
             optimizer.zero_grad()
             batch = experience_buffer.sample(self.RL_BATCH_SIZE)

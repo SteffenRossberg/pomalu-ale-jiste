@@ -11,10 +11,12 @@ from src.trading.trader import Trader
 from src.environment.stock_exchange import StockExchange
 from src.environment.enums import TrainingLevels
 from src.utility.logger import Logger
-
+from prometheus_client import start_http_server
 
 if __name__ != "__main__":
     exit(0)
+
+start_http_server(5000, '0.0.0.0')
 
 # Let's train data of 16 years from 01/01/2000 to 12/31/2015
 train_start_date = '2000-01-01'
@@ -67,33 +69,19 @@ print("Create gym ...")
 gym = Gym(manager)
 
 print("Create buyer auto encoder ...")
-buyer, buyer_optimizer = \
-    manager.create_auto_encoder(
-        sample_days,
-        'buyer.auto.encoder')
+buyer, buyer_optimizer = manager.create_auto_encoder(sample_days)
 buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
 
 print("Create seller auto encoder ...")
-seller, seller_optimizer = \
-    manager.create_auto_encoder(
-        sample_days,
-        'seller.auto.encoder')
+seller, seller_optimizer = manager.create_auto_encoder(sample_days)
 seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
 
 print("Create classifier ...")
-classifier, classifier_optimizer = \
-    manager.create_classifier(
-        buyer,
-        seller,
-        'trader.classifier')
+classifier, classifier_optimizer = manager.create_classifier(buyer, seller)
 classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
 
 print("Create decision maker ...")
-decision_maker, decision_optimizer = \
-    manager.create_decision_maker(
-        classifier,
-        'trader.decision.maker',
-        state_size=7)
+decision_maker, decision_optimizer = manager.create_decision_maker(classifier, state_size=7)
 best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer, -100.0)
 
 print("Prepare samples ...")
@@ -146,6 +134,8 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         print("Reload buyer samples detector with best training result after training ...")
         buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
         Logger.log(train_id, f"buyer.auto.encoder: {buyer_loss:.7f}")
+        classifier.buyer_auto_encoder = buyer
+        decision_maker.classifier.buyer_auto_encoder = buyer
 
         print("Train seller samples detector ...")
         gym.train_auto_encoder(
@@ -157,6 +147,8 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         print("Reload seller samples detector with best training result after training ...")
         seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
         Logger.log(train_id, f"seller.auto.encoder: {seller_loss:.7f}")
+        classifier.seller_auto_encoder = seller
+        decision_maker.classifier.seller_auto_encoder = seller
 
     if train_classifier > 0:
         print("Deactivate buyer samples detector parameters ...")
@@ -190,6 +182,7 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         print("Reload classifier with best training result after training ...")
         classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
         Logger.log(train_id, f"trader.classifier: {classifier_loss:.7f}")
+        decision_maker.classifier = classifier
 
     if train_decision_maker > 0:
         print("Deactivate buyer samples detector parameters ...")
@@ -214,7 +207,14 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
                                                      reset_on_close=reset_on_close)
         print(f"Train decision maker {str(training_level)} (reset on close = {reset_on_close}) ...")
         stock_exchange.train_level = training_level
-        gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
+        gym.train_decision_maker(
+            'trader',
+            decision_maker,
+            decision_optimizer,
+            best_mean_val,
+            stock_exchange,
+            stop_predicate=lambda mean_value: mean_value > 220.0,
+            stop_on_count=5)
         print("Reload decision maker with best training result after training ...")
         best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer)
         print(f"Seeds: {stock_exchange.seeds}")
@@ -225,5 +225,8 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
 
 
 train(run_id, args.train_detectors, args.train_classifier, args.train_decision_maker)
+# second training run to maybe gain better trading performance
+train(run_id, args.train_detectors, args.train_classifier, args.train_decision_maker)
+
 print(f"Best mean value: {best_mean_val:.7f}")
 trader.trade(run_id)
