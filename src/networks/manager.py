@@ -44,23 +44,14 @@ class NetManager:
         decoder = Decoder(input_size=days, output_shape=(days, 4)).to(self.device)
         auto_encoder = AutoEncoder(encoder, decoder).to(self.device)
         optimizer = optim.Adam(auto_encoder.parameters())
-        file_path = f'{self.data_directory}/init.{net_name}.pt'
-        if not os.path.exists(file_path):
-            self.save_net(f'init.{net_name}', auto_encoder, optimizer)
         return auto_encoder, optimizer
 
     def create_classifier(self, buyer, seller, net_name):
         classifier = Classifier(buyer, seller).to(self.device)
         optimizer = optim.Adam(classifier.parameters())
-        file_path = f'{self.data_directory}/init.{net_name}.pt'
-        if not os.path.exists(file_path):
-            self.save_net(f'init.{net_name}', classifier, optimizer)
         return classifier, optimizer
 
     def create_decision_maker(self, classifier, net_name, state_size=7):
         agent = DecisionMaker(classifier, state_size=state_size).to(self.device)
         optimizer = optim.Adam(agent.parameters(), lr=0.0001)
-        file_path = f'{self.data_directory}/init.{net_name}.pt'
-        if not os.path.exists(file_path):
-            self.save_net(f'init.{net_name}', agent, optimizer)
         return agent, optimizer
