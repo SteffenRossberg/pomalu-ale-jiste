@@ -37,12 +37,12 @@ class Gym:
             stop_on_count=10):
 
         def save(manager, loss):
-            manager.save_net(f'{name}.autoencoder', agent, optimizer, loss=loss)
+            manager.save_net(f'{name}.auto.encoder', agent, optimizer, loss=loss)
             manager.save_net(f'{name}.encoder', agent.encoder, loss=loss)
             manager.save_net(f'{name}.decoder', agent.decoder, loss=loss)
 
         def output(epoch, step, loss, is_saved):
-            Gym.print_step(epoch, step, f'{name}.autoencoder', loss, is_saved)
+            Gym.print_step(epoch, step, f'{name}.auto.encoder', loss, is_saved)
 
         objective = nn.MSELoss()
         self.train(
@@ -193,7 +193,7 @@ class Gym:
             stock_exchange):
 
         def save(manager, loss_value):
-            manager.save_net(f'{name}.decision_maker', model, optimizer, loss=loss_value)
+            manager.save_net(f'{name}.decision.maker', model, optimizer, loss=loss_value)
 
         criterion = nn.MSELoss()
         target_net = TargetNet(model)
