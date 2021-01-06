@@ -1,9 +1,8 @@
 import argparse
 import numpy as np
 import torch
-import pandas as pd
-import matplotlib.pyplot as plt
 import os
+from datetime import datetime
 from src.environment.dataprovider import DataProvider
 from src.preparation.preparator import DataPreparator
 from src.networks.manager import NetManager
@@ -11,7 +10,8 @@ from src.training.gym import Gym
 from src.trading.trader import Trader
 from src.environment.stock_exchange import StockExchange
 from src.environment.enums import TrainingLevels
-from datetime import datetime
+from src.utility.logger import Logger
+
 
 if __name__ != "__main__":
     exit(0)
@@ -28,6 +28,8 @@ trader_capital_gains_tax = 25.0
 trader_solidarity_surcharge = 5.5
 # Use the last 5 days as a time frame for sampling, forecasting and trading
 sample_days = 5
+today = datetime.now()
+run_id = f"{today:%Y%m%d.%H%M%S}"
 
 # get the command line arguments
 parser = argparse.ArgumentParser()
@@ -58,66 +60,82 @@ print(f"Device: {device}")
 print("Create data provider ...")
 provider = DataProvider(args.apikey)
 
+print("Create agent manager ...")
+manager = NetManager(device, data_directory=f'data/networks/{run_id}')
 
-def train(training_day):
-    os.makedirs(f'data/networks/{training_day:%Y%m%d.%H%M%S}', exist_ok=True)
+print("Create gym ...")
+gym = Gym(manager)
 
-    print("Create agent manager ...")
-    manager = NetManager(device, data_directory=f'data/networks/{training_day:%Y%m%d.%H%M%S}')
+print("Create buyer auto encoder ...")
+buyer, buyer_optimizer = \
+    manager.create_auto_encoder(
+        sample_days,
+        'buyer.auto.encoder')
+buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
 
-    print("Create gym ...")
-    gym = Gym(manager)
+print("Create seller auto encoder ...")
+seller, seller_optimizer = \
+    manager.create_auto_encoder(
+        sample_days,
+        'seller.auto.encoder')
+seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
 
-    print("Create buyer auto encoder ...")
-    buyer, buyer_optimizer = \
-        manager.create_auto_encoder(
-            sample_days,
-            'buyer.autoencoder')
-    buyer_loss = manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
+print("Create classifier ...")
+classifier, classifier_optimizer = \
+    manager.create_classifier(
+        buyer,
+        seller,
+        'trader.classifier')
+classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
 
-    print("Create seller auto encoder ...")
-    seller, seller_optimizer = \
-        manager.create_auto_encoder(
-            sample_days,
-            'seller.autoencoder')
-    seller_loss = manager.load_net('seller.autoencoder', seller, seller_optimizer)
+print("Create decision maker ...")
+decision_maker, decision_optimizer = \
+    manager.create_decision_maker(
+        classifier,
+        'trader.decision.maker',
+        state_size=7)
+best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer, -100.0)
 
-    print("Create classifier ...")
-    classifier, classifier_optimizer = \
-        manager.create_classifier(
-            buyer,
-            seller,
-            'trader.classifier')
-    classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
+print("Prepare samples ...")
+buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(provider,
+                                                                         days=sample_days,
+                                                                         start_date=train_start_date,
+                                                                         end_date=train_end_date)
 
-    print("Create decision maker ...")
-    # decision_maker, decision_optimizer = manager.create_decision_maker(classifier, state_size=sample_days + 1)
-    decision_maker, decision_optimizer = \
-        manager.create_decision_maker(
-            classifier,
-            'trader.decision_maker',
-            state_size=7)
-    best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer, -100.0)
+print("Prepare quotes ...")
+all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
+                                                            sample_days,
+                                                            trader_start_date,
+                                                            trader_end_date,
+                                                            provider.tickers)
 
-    print("Create trader ...")
-    trader = Trader(trader_start_capital,
-                    trader_order_fee,
-                    trader_capital_gains_tax,
-                    trader_solidarity_surcharge,
-                    provider,
-                    device,
-                    sample_days)
 
-    print("Prepare samples ...")
-    buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(provider,
-                                                                             days=sample_days,
-                                                                             start_date=train_start_date,
-                                                                             end_date=train_end_date)
+print("Create trader ...")
+trader = Trader(
+    provider,
+    decision_maker,
+    len(provider.tickers),
+    int(len(provider.tickers) / 3),
+    all_quotes,
+    all_tickers,
+    trader_start_date,
+    trader_end_date,
+    trader_start_capital,
+    trader_order_fee,
+    trader_capital_gains_tax,
+    trader_solidarity_surcharge,
+    device,
+    sample_days)
 
-    with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'wt') as train_file:
-        train_file.write(f"Id: {training_day:%Y%m%d.%H%M%S}\n")
 
-    if args.train_detectors > 0:
+def train(train_id, train_detectors, train_classifier, train_decision_maker):
+    global buyer_loss, seller_loss, classifier_loss, best_mean_val
+
+    os.makedirs(f'data/networks/{train_id}', exist_ok=True)
+
+    Logger.log(train_id, f"Id: {train_id}")
+
+    if train_detectors > 0:
         print("Train buyer samples detector ...")
         gym.train_auto_encoder(
             'buyer',
@@ -126,10 +144,8 @@ def train(training_day):
             buy_samples,
             buyer_loss)
         print("Reload buyer samples detector with best training result after training ...")
-        buyer_loss = manager.load_net('buyer.autoencoder', buyer, buyer_optimizer)
-
-        with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
-            train_file.write(f"buyer.autoencoder: {buyer_loss:.7f}\n")
+        buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
+        Logger.log(train_id, f"buyer.auto.encoder: {buyer_loss:.7f}")
 
         print("Train seller samples detector ...")
         gym.train_auto_encoder(
@@ -139,12 +155,10 @@ def train(training_day):
             sell_samples,
             seller_loss)
         print("Reload seller samples detector with best training result after training ...")
-        seller_loss = manager.load_net('seller.autoencoder', seller, seller_optimizer)
+        seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
+        Logger.log(train_id, f"seller.auto.encoder: {seller_loss:.7f}")
 
-        with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
-            train_file.write(f"seller.autoencoder: {seller_loss:.7f}\n")
-
-    if args.train_classifier > 0:
+    if train_classifier > 0:
         print("Deactivate buyer samples detector parameters ...")
         for parameter in classifier.buyer_auto_encoder.parameters():
             parameter.requires_grad = False
@@ -175,11 +189,9 @@ def train(training_day):
             max_steps=20)
         print("Reload classifier with best training result after training ...")
         classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
+        Logger.log(train_id, f"trader.classifier: {classifier_loss:.7f}")
 
-        with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
-            train_file.write(f"trader.classifier: {classifier_loss:.7f}\n")
-
-    if args.train_decision_maker > 0:
+    if train_decision_maker > 0:
         print("Deactivate buyer samples detector parameters ...")
         for parameter in decision_maker.classifier.buyer_auto_encoder.parameters():
             parameter.requires_grad = False
@@ -193,7 +205,7 @@ def train(training_day):
             parameter.requires_grad = False
 
         reset_on_close = False
-        training_level = TrainingLevels.Skip | TrainingLevels.Sell
+        training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
         print("Prepare stock exchange environment ...")
         stock_exchange = StockExchange.from_provider(provider,
                                                      sample_days,
@@ -204,135 +216,14 @@ def train(training_day):
         stock_exchange.train_level = training_level
         gym.train_decision_maker('trader', decision_maker, decision_optimizer, best_mean_val, stock_exchange)
         print("Reload decision maker with best training result after training ...")
-        best_mean_val = manager.load_net('trader.decision_maker', decision_maker, decision_optimizer)
+        best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer)
         print(f"Seeds: {stock_exchange.seeds}")
-        with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
-            train_file.write(f"Train Level: {str(training_level)}\n")
-            train_file.write(f"Reset On Close: {reset_on_close}\n")
-            train_file.write(f"Stock Exchange Seeds: {stock_exchange.seeds}\n")
-            train_file.write(f"Trader Best mean value: {best_mean_val:.7f}\n")
-
-    all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
-                                                                sample_days,
-                                                                trader_start_date,
-                                                                trader_end_date,
-                                                                provider.tickers)
-    result = ''
-    max_all_positions = len(provider.tickers)
-    max_limit_all_positions = int(len(provider.tickers) / 3)
-
-    print(f"Trade limited all stocks from {trader_start_date} to {trader_end_date} ...")
-    message, limit_all_investments, limit_all_gain_loss = \
-        trader.trade(
-            decision_maker,
-            all_quotes,
-            all_tickers,
-            True,
-            provider.tickers,
-            max_positions=max_limit_all_positions)
-    result += f'\nTrade Portfolio (max {int(len(provider.tickers) / 3)} stocks): {message}'
-
-    print(f"Trade all stocks from {trader_start_date} to {trader_end_date} ...")
-    message, all_investments, all_gain_loss = \
-        trader.trade(
-            decision_maker,
-            all_quotes,
-            all_tickers,
-            True,
-            provider.tickers,
-            max_positions=max_all_positions)
-    result += f'\nTrade All ({len(provider.tickers)} stocks): {message}'
-
-    print(f"Buy and hold all stocks from {trader_start_date} to {trader_end_date} ...")
-    message = \
-        trader.buy_and_hold(
-            all_quotes,
-            all_tickers,
-            False,
-            provider.tickers)
-    result += f'\nBuy % Hold All ({len(provider.tickers)} stocks): {message}'
-
-    print(result)
-    with open(f'data/{training_day:%Y%m%d.%H%M%S}.train.txt', 'at') as train_file:
-        train_file.write(f"\n{result}")
-
-    index_ticker = 'URTH'
-    index_title = provider.etf_tickers[index_ticker]
-    compare_index = provider.load(index_ticker, trader_start_date, trader_end_date, True)
-
-    all_title = f'All stocks ({max_all_positions} positions)'
-    limit_all_title = f'All stocks (max. {max_limit_all_positions} positions at once)'
-    gain_loss_all_title = f'Return all stocks ({max_all_positions} positions)'
-    gain_loss_limit_all_title = f'Return all stocks (max. {max_limit_all_positions} positions at once)'
-
-    length = (len(compare_index)
-              if len(compare_index) < len(all_investments)
-              else len(all_investments))
-
-    resulting_frame = pd.DataFrame(
-        data={
-            'index': range(length),
-            'date': np.array(compare_index['date'].values[-length:]),
-            index_title: np.array(compare_index['close'].values[-length:]),
-            all_title: np.array(all_investments[-length:]),
-            limit_all_title: np.array(limit_all_investments[-length:]),
-            gain_loss_all_title: np.array(all_gain_loss[-length:]) + trader_start_capital,
-            gain_loss_limit_all_title: np.array(limit_all_gain_loss[-length:]) + trader_start_capital
-        })
-
-    all_columns = [
-        index_title,
-        all_title,
-        limit_all_title,
-        gain_loss_all_title,
-        gain_loss_limit_all_title
-    ]
-    for column in all_columns:
-        change_column = f'Change {column}'
-        resulting_frame[change_column] = resulting_frame[column].pct_change(1).fillna(0.0) * 100.0
-        resulting_frame[column] = \
-            resulting_frame.apply(
-                lambda row: np.sum(resulting_frame[change_column].values[0:int(row['index'] + 1)]),
-                axis=1)
-
-    resulting_frame.set_index(resulting_frame['date'], inplace=True)
-
-    fig, ax = plt.subplots(nrows=2)
-
-    investment_columns = [
-        all_title,
-        limit_all_title
-    ]
-    resulting_frame[index_title].plot.area(ax=ax[0], stacked=False)
-    resulting_frame[investment_columns].plot(
-        ax=ax[0],
-        figsize=(20, 10),
-        linewidth=2,
-        colormap='Spectral',
-        title=f'Investment vs {index_title}')
-
-    gain_loss_columns = [
-        gain_loss_all_title,
-        gain_loss_limit_all_title
-    ]
-    resulting_frame[index_title].plot.area(ax=ax[1], stacked=False)
-    resulting_frame[gain_loss_columns].plot(
-        ax=ax[1],
-        figsize=(20, 10),
-        linewidth=2,
-        colormap='Spectral',
-        title=f'Portfolio Changes vs {index_title}')
-
-    results = resulting_frame[gain_loss_columns].copy()
-    results.to_csv(f'data/{training_day:%Y%m%d.%H%M%S}.trading.gain_loss.csv')
-
-    plt.savefig(f'data/{training_day:%Y%m%d.%H%M%S}.chart.png')
-    plt.show()
-    plt.close()
+        Logger.log(train_id, f"Train Level: {str(training_level)}")
+        Logger.log(train_id, f"Reset On Close: {reset_on_close}")
+        Logger.log(train_id, f"Stock Exchange Seeds: {stock_exchange.seeds}")
+        Logger.log(train_id, f"Trader Best mean value: {best_mean_val:.7f}")
 
 
-# today = datetime(2021, 1, 5, 17, 17, 24)
-# today = datetime(2021, 1, 5, 20, 11, 46)
-today = datetime.now()
-train(today)
-
+train(run_id, args.train_detectors, args.train_classifier, args.train_decision_maker)
+print(f"Best mean value: {best_mean_val:.7f}")
+trader.trade(run_id)
