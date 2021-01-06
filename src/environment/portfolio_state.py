@@ -97,6 +97,7 @@ class PortfolioState:
             self._stock_count = count
             self._buy_price = price
             self._top_price = price
+            done |= not sell_price > 0.0
         elif action == Actions.Sell and self._stock_count > 0:
             reward -= (self.trading_fees / (self._stock_count * price)) * 100.0
             if self.__train_level & TrainingLevels.Sell == TrainingLevels.Sell:
@@ -107,14 +108,13 @@ class PortfolioState:
             self._stock_count = 0
             self._buy_price = 0.0
             self._top_price = price
-            done |= self.reset_on_close
+            done |= self.reset_on_close or not buy_price > 0.0
         elif action == Actions.SkipOrHold and self._stock_count == 0:
             if self.__train_level & TrainingLevels.Skip == TrainingLevels.Skip:
-                reward += self.calculate_reward(price, buy_price)
-            self._top_price = price if self._top_price < price else self._top_price
+                reward += self.calculate_reward(price, buy_price) * -1.0
         elif action == Actions.SkipOrHold and self._stock_count > 0:
             if self.__train_level & TrainingLevels.Hold == TrainingLevels.Hold:
-                reward += self.calculate_reward(price, sell_price)
+                reward += self.calculate_reward(price, sell_price) * -1.0
         self._offset += 1
         done |= self._offset >= len(self._frame['windows']) - self._days
         return reward, done
@@ -123,12 +123,7 @@ class PortfolioState:
     def calculate_reward(price, ideal_price):
         if not ideal_price > 0.0:
             return 0.0
-        diff = abs(price - ideal_price)
-        diff_ratio = 1.0 - (diff / ideal_price)
-        if diff_ratio > 0.999:
-            return 10.0
-        if diff_ratio > 0.9975:
-            return 5.0
-        if diff_ratio > 0.995:
-            return 2.5
-        return -5.0
+        relative_diff = ((price / ideal_price) - 1.0) * 100
+        rewards = relative_diff ** 2 * -300.0 + 20.0
+        rewards = rewards if rewards > -10.0 else -10.0
+        return rewards
