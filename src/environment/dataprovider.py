@@ -1,6 +1,7 @@
 import requests
 import pandas as pd
 import os
+from datetime import datetime, timedelta
 
 
 class DataProvider:
@@ -8,6 +9,7 @@ class DataProvider:
     def __init__(self, api_key, data_directory='data'):
         self.__base_url = 'https://api.tiingo.com'
         self.__eod_url = f'{self.__base_url}/tiingo/daily/'
+        self.__intraday_url = f'{self.__base_url}/iex/'
         self.__tickers = {
                 'MMM': '3M Company',
                 'ABBV': 'AbbVie Inc',
@@ -151,8 +153,36 @@ class DataProvider:
         quotes.fillna(method='bfill', inplace=True)
         return quotes
 
-    def __ensure_cache_file_path(self, ticker, start_date):
-        sub_directory = f'{start_date}'
+    def load_intraday(self, ticker, start_date, end_date, enable_cached_data=True):
+        relative_file_path = self.__ensure_cache_file_path(ticker, start_date, True)
+        if not os.path.exists(relative_file_path) or not enable_cached_data:
+            start = datetime.strptime(start_date, '%Y-%m-%d')
+            final_end = datetime.strptime(end_date, '%Y-%m-%d')
+            end = self.__get_last_day_of_next_month(start)
+            data = None
+            while start < final_end:
+                print(f'{ticker} - {start} > {end}')
+                quotes = self.__load_intraday_from_provider(ticker, start, end)
+                start = (self.__get_first_day_of_next_month(start)
+                         if quotes is None or not len(quotes) > 0
+                         else quotes['date'].iloc[-1] + timedelta(days=1))
+                end = self.__get_last_day_of_next_month(start)
+                if quotes is None or not len(quotes) > 0:
+                    continue
+                quotes = quotes.set_index('date', drop=False)
+                data = quotes if data is None else data.append(quotes)
+            if data is None:
+                return None
+            data.to_csv(relative_file_path)
+        quotes = pd.read_csv(relative_file_path)
+        quotes['date'] = pd.to_datetime(quotes['date'], format='%Y-%m-%d %H:%M:%S')
+        quotes.fillna(method='bfill', inplace=True)
+        return quotes
+
+    def __ensure_cache_file_path(self, ticker, start_date, intraday=False):
+        sub_directory = f'eod/{start_date}'
+        if intraday:
+            sub_directory = f'intraday/{start_date}'
         relative_directory = f'{self.__data_directory}/{sub_directory}'
         os.makedirs(relative_directory, exist_ok=True)
         relative_file_path = f'{relative_directory}/{ticker}.csv'
@@ -168,11 +198,31 @@ class DataProvider:
         quotes = DataProvider.__enforce_data_types(quotes)
         return quotes
 
+    def __load_intraday_from_provider(self, ticker, start_date, end_date):
+        raw_json = self.__fetch_intraday_data(ticker, start_date, end_date)
+        if raw_json is None:
+            return None
+        quotes = DataProvider.__parse_data(raw_json, ticker)
+        if quotes is None:
+            return None
+        quotes = DataProvider.__enforce_data_types(quotes)
+        return quotes
+
     def __fetch_eod_data(self, ticker, start_date, end_date):
         url = f'{self.__eod_url}{ticker}/prices'
         payload = {'startDate': start_date,
                    'endDate': end_date,
                    'columns': 'date,adjOpen,adjHigh,adjLow,adjClose',
+                   'token': self.__api_key}
+        raw_json = DataProvider.__request(url, payload)
+        return raw_json
+
+    def __fetch_intraday_data(self, ticker, start_date, end_date):
+        url = f'{self.__intraday_url}{ticker}/prices'
+        payload = {'startDate': self.__format_date(start_date),
+                   'endDate': self.__format_date(end_date),
+                   'columns': 'open,high,low,close',
+                   'resampleFreq': '1min',
                    'token': self.__api_key}
         raw_json = DataProvider.__request(url, payload)
         return raw_json
@@ -194,6 +244,15 @@ class DataProvider:
 
     @staticmethod
     def __parse_eod_data(json, ticker):
+        quotes = DataProvider.__parse_data(json, ticker)
+        if quotes is None:
+            return None
+        columns = {'adjClose': 'close', 'adjHigh': 'high', 'adjLow': 'low', 'adjOpen': 'open'}
+        quotes.rename(columns=columns, inplace=True)
+        return quotes
+
+    @staticmethod
+    def __parse_data(json, ticker):
         if json is None or len(json) == 0:
             print(f'{ticker:5} - NO DATA')
             return None
@@ -201,8 +260,6 @@ class DataProvider:
             print(json['detail'])
             return None
         quotes = pd.DataFrame.from_dict(json)
-        columns = {'adjClose': 'close', 'adjHigh': 'high', 'adjLow': 'low', 'adjOpen': 'open'}
-        quotes.rename(columns=columns, inplace=True)
         return quotes
 
     @staticmethod
@@ -213,3 +270,25 @@ class DataProvider:
                                     'low': 'float', 'close': 'float',
                                     'date': 'datetime64[ns]'})
         return quotes
+
+    @staticmethod
+    def __format_date(date):
+        if isinstance(date, str):
+            formatted_date = date
+        else:
+            formatted_date = date.strftime('%Y-%m-%d')
+        return formatted_date
+
+    @staticmethod
+    def __get_first_day_of_next_month(date: datetime):
+        day = datetime(date.year + (1 if date.month == 12 else 0),
+                       1 if date.month == 12 else date.month + 1,
+                       1)
+        return day
+
+    @staticmethod
+    def __get_last_day_of_next_month(date: datetime):
+        day = datetime(date.year + (1 if date.month == 12 else 0),
+                       1 if date.month == 12 else date.month + 1,
+                       1) + timedelta(days=-1)
+        return day
