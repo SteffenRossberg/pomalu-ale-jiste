@@ -43,7 +43,8 @@ class Trader:
 
     def trade(
             self,
-            run_id):
+            run_id,
+            intraday=False):
 
         result = ''
 
@@ -83,7 +84,10 @@ class Trader:
 
         index_ticker = 'URTH'
         index_title = self.stock_exchange.etf_tickers[index_ticker]
-        compare_index = self.stock_exchange.load(index_ticker, self.start_date, self.end_date, True)
+        if intraday:
+            compare_index = self.stock_exchange.load_intraday(index_ticker, self.start_date, self.end_date, True)
+        else:
+            compare_index = self.stock_exchange.load(index_ticker, self.start_date, self.end_date, True)
 
         all_title = f'All stocks ({self.max_positions} positions)'
         limit_all_title = f'All stocks (max. {self.max_limit_positions} positions at once)'

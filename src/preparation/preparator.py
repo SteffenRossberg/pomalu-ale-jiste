@@ -10,7 +10,7 @@ class DataPreparator:
 
     @staticmethod
     def prepare_rl_frames(provider, days=5, start_date='2000-01-01', end_date='2015-12-31'):
-        frames_path = f'data/{start_date}/rl_frames.json'
+        frames_path = f'data/eod/{start_date}/rl_frames.json'
         if not os.path.exists(frames_path):
             frames = []
             for ticker, company in provider.tickers.items():
@@ -40,9 +40,18 @@ class DataPreparator:
         return {frame['ticker']: frame for frame in frames}
 
     @staticmethod
-    def prepare_all_quotes(provider, days=5, start_date='2000-01-01', end_date='2015-12-31', tickers=None):
-        quotes_path = f'data/{start_date}/all_quotes.json'
-        tickers_path = f'data/{start_date}/all_tickers.json'
+    def prepare_all_quotes(
+            provider,
+            days=5,
+            start_date='2000-01-01',
+            end_date='2015-12-31',
+            tickers=None,
+            intraday=False):
+        quotes_path = f'data/eod/{start_date}/all_quotes.json'
+        tickers_path = f'data/eod/{start_date}/all_tickers.json'
+        if intraday:
+            quotes_path = f'data/intraday/{start_date}/all_quotes.json'
+            tickers_path = f'data/intraday/{start_date}/all_tickers.json'
         if not os.path.exists(quotes_path):
             if tickers is None:
                 tickers = provider.tickers
@@ -50,7 +59,10 @@ class DataPreparator:
             all_tickers = {}
             for ticker, company in tickers.items():
                 print(f'Load {company} ...')
-                quotes = provider.load(ticker, start_date, end_date)
+                if intraday:
+                    quotes = provider.load_intraday(ticker, start_date, end_date)
+                else:
+                    quotes = provider.load(ticker, start_date, end_date)
                 if quotes is None:
                     continue
                 quotes[f'{ticker}_window'] = DataPreparator.calculate_windows(quotes, days=days, normalize=True)
@@ -118,7 +130,7 @@ class DataPreparator:
         all_buys = None
         all_sells = None
         all_none = None
-        samples_path = f'data/{start_date}/samples.npz'
+        samples_path = f'data/eod/{start_date}/samples.npz'
         if not os.path.exists(samples_path):
             for ticker, company in provider.tickers.items():
                 # get data
