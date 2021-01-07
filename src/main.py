@@ -22,7 +22,7 @@ start_http_server(5000, '0.0.0.0')
 train_start_date = '2000-01-01'
 train_end_date = '2015-12-31'
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
-trader_start_date = '2016-01-01'
+trader_start_date = '2019-01-01'
 trader_end_date = '2020-12-31'
 trader_start_capital = 50_000.0
 trader_order_fee = 1.0
@@ -31,7 +31,8 @@ trader_solidarity_surcharge = 5.5
 # Use the last 5 days as a time frame for sampling, forecasting and trading
 sample_days = 5
 today = datetime.now()
-run_id = f"{today:%Y%m%d.%H%M%S}"
+# run_id = f"{today:%Y%m%d.%H%M%S}"
+run_id = "20210106.224436"
 
 # get the command line arguments
 parser = argparse.ArgumentParser()
@@ -95,7 +96,8 @@ all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
                                                             sample_days,
                                                             trader_start_date,
                                                             trader_end_date,
-                                                            provider.tickers)
+                                                            provider.tickers,
+                                                            True)
 
 
 print("Create trader ...")
@@ -225,8 +227,6 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
 
 
 train(run_id, args.train_detectors, args.train_classifier, args.train_decision_maker)
-# second training run to maybe gain better trading performance
-train(run_id, args.train_detectors, args.train_classifier, args.train_decision_maker)
 
 print(f"Best mean value: {best_mean_val:.7f}")
-trader.trade(run_id)
+trader.trade(run_id, True)

@@ -24,6 +24,14 @@ class Gym:
         self.RL_EPSILON_STEPS = 1_000_000
         self.RL_REWARD_STEPS = 2
         self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 20
+        self.gauges = {}
+
+    def get_gauge(self, name, description):
+        if name not in self.gauges:
+            self.gauges[name] = Gauge(
+                name,
+                description)
+        return self.gauges[name]
 
     def train_auto_encoder(
             self,
@@ -45,10 +53,10 @@ class Gym:
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.auto.encoder', loss, is_saved)
 
-        best_value_gauge = Gauge(
+        best_value_gauge = self.get_gauge(
             f'train_{name}_auto_encoder_best_value',
             f'Best value of {name}_auto_encoder training')
-        current_value_gauge = Gauge(
+        current_value_gauge = self.get_gauge(
             f'train_{name}_auto_encoder_current_value',
             f'Current value of {name}_auto_encoder training')
 
@@ -90,10 +98,10 @@ class Gym:
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.classifier', loss, is_saved)
 
-        best_value_gauge = Gauge(
+        best_value_gauge = self.get_gauge(
             f'train_{name}_classifier_best_value',
             f'Best value of {name}.classifier training')
-        current_value_gauge = Gauge(
+        current_value_gauge = self.get_gauge(
             f'train_{name}_classifier_current_value',
             f'Current value of {name}.classifier training')
 
@@ -220,10 +228,10 @@ class Gym:
         def save(manager, loss_value):
             manager.save_net(f'{name}.decision.maker', model, optimizer, loss=loss_value)
 
-        best_value_gauge = Gauge(
+        best_value_gauge = self.get_gauge(
             f'train_{name}_decision_maker_best_value',
             f'Best value of {name}.classifier training')
-        current_value_gauge = Gauge(
+        current_value_gauge = self.get_gauge(
             f'train_{name}_decision_maker_current_value',
             f'Current value of {name}.classifier training')
 
