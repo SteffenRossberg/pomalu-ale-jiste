@@ -392,7 +392,9 @@ class Trader:
         for ticker in tickers.keys():
             window = row[f'{ticker}_window']
             if (window is np.nan or
+                    np.isnan(window).any() or
                     row[f'{ticker}_last_days'] is np.nan or
+                    np.isnan(row[f'{ticker}_last_days']).any() or
                     window is None or
                     row[f'{ticker}_last_days'] is None or
                     np.sum(window) == 0.0):

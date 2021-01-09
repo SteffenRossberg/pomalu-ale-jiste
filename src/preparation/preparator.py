@@ -47,10 +47,10 @@ class DataPreparator:
             end_date='2015-12-31',
             tickers=None,
             intraday=False):
-        quotes_path = f'data/eod/{start_date}/all_quotes.json'
+        quotes_path = f'data/eod/{start_date}/all_quotes.h5'
         tickers_path = f'data/eod/{start_date}/all_tickers.json'
         if intraday:
-            quotes_path = f'data/intraday/{start_date}/all_quotes.json'
+            quotes_path = f'data/intraday/{start_date}/all_quotes.h5'
             tickers_path = f'data/intraday/{start_date}/all_tickers.json'
         if not os.path.exists(quotes_path):
             if tickers is None:
@@ -76,11 +76,11 @@ class DataPreparator:
                 else:
                     all_quotes = pd.merge(all_quotes, quotes, how='outer', on='date')
                 all_tickers[ticker] = company
-            all_quotes.to_json(quotes_path)
+            all_quotes.to_hdf(quotes_path, key='all_quotes')
             with open(tickers_path, 'w') as outfile:
                 print(f'Saving {tickers_path} ...')
                 json.dump(all_tickers, outfile, indent=4)
-        all_quotes = pd.read_json(quotes_path)
+        all_quotes = pd.read_hdf(quotes_path, key='all_quotes')
         with open(tickers_path, 'r') as infile:
             print(f'Loading {tickers_path} ...')
             all_tickers = json.load(infile)
@@ -282,7 +282,7 @@ class DataPreparator:
     @staticmethod
     def calculate_last_days(quotes, days=5, normalize=True):
         last_days = DataPreparator.calculate_windows(quotes, days, normalize, ['close'])
-        last_days = [window.squeeze().tolist() for window in last_days.values]
+        last_days = [window.squeeze().tolist() for window in last_days]
         return last_days
 
     @staticmethod
@@ -291,21 +291,14 @@ class DataPreparator:
         def do_not_normalize(window):
             return window
 
-        def build_window(row):
-            normalize_action = DataPreparator.normalize_data if normalize else do_not_normalize
-            index = row['index']
-            start = index - days + 1
-            stop = index + 1
-            window = (np.array([np.zeros((days, len(columns)))], dtype=np.float32)
-                      if index < days - 1
-                      else normalize_action(np.array([quotes[start:stop][columns].values], dtype=np.float32)))
-            return window
-
+        normalize_action = DataPreparator.normalize_data if normalize else do_not_normalize
         if columns is None:
             columns = ['open', 'high', 'low', 'close']
         quotes = quotes.copy()
-        quotes['index'] = range(len(quotes))
-        windows = quotes.apply(build_window, axis=1)
+        windows = [(np.array([np.zeros((days, len(columns)))], dtype=np.float32)
+                    if win.shape[0] < days
+                    else normalize_action(np.array([win.values.tolist()], dtype=np.float32)))
+                   for win in quotes[columns].rolling(days)]
         return windows
 
     @staticmethod
