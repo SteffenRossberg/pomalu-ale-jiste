@@ -8,3 +8,4 @@ torch==1.7.0
 ptan==0.7
 gym==0.18.0
 prometheus-client
+tables
