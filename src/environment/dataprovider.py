@@ -222,7 +222,7 @@ class DataProvider:
         payload = {'startDate': self.__format_date(start_date),
                    'endDate': self.__format_date(end_date),
                    'columns': 'open,high,low,close',
-                   'resampleFreq': '1min',
+                   'resampleFreq': '5min',
                    'token': self.__api_key}
         raw_json = DataProvider.__request(url, payload)
         return raw_json
