@@ -91,5 +91,5 @@ class StockExchange(gym.Env):
 
     @classmethod
     def from_provider(cls, provider, days, start_date, end_date, **kwargs):
-        frames = DataPreparator.prepare_rl_frames(provider, days, start_date, end_date)
+        frames = DataPreparator.prepare_frames(provider, days, start_date, end_date)
         return StockExchange(frames, days, **kwargs)

@@ -324,7 +324,7 @@ class Trader:
             earnings -= earnings * self.tax_rate
         gain_loss = earnings
         gain_loss -= self.order_fee
-        returns = ((gain_loss / buy_in) - 1.0) * 100.0
+        returns = (((gain_loss + buy_in) / buy_in) - 1.0) * 100.0
         return returns
 
     def clear_positions(
