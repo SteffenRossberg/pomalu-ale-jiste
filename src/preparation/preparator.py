@@ -9,7 +9,7 @@ from src.preparation.msethread import MseThread
 class DataPreparator:
 
     @staticmethod
-    def prepare_rl_frames(provider, days=5, start_date='2000-01-01', end_date='2015-12-31'):
+    def prepare_frames(provider, days=5, start_date='2000-01-01', end_date='2015-12-31'):
         frames_path = f'data/eod/{start_date}/rl_frames.json'
         if not os.path.exists(frames_path):
             frames = []
@@ -27,6 +27,8 @@ class DataPreparator:
                     'dates': quotes['date'].dt.strftime('%Y-%m-%d').values[days:].tolist(),
                     'windows': [window.tolist() for window in quotes['window'].values[days:]],
                     'prices': quotes['close'].values[days:].tolist(),
+                    'buy_signals': quotes['buy'].values[days:].tolist(),
+                    'sell_signals': quotes['sell'].values[days:].tolist(),
                     'buys': quotes['buy'].fillna(method='ffill').values[days:].tolist(),
                     'sells': quotes['sell'].fillna(method='ffill').values[days:].tolist(),
                     'last_days': [last_days for last_days in quotes['last_days'].values[days:]]
