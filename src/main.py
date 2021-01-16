@@ -72,21 +72,19 @@ gym = Gym(manager)
 
 print("Create buyer auto encoder ...")
 buyer, buyer_optimizer = manager.create_auto_encoder(sample_days)
+buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
 
 print("Create seller auto encoder ...")
 seller, seller_optimizer = manager.create_auto_encoder(sample_days)
+seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
 
 print("Create classifier ...")
 classifier, classifier_optimizer = manager.create_classifier(buyer, seller)
+classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
 
 print("Create decision maker ...")
 decision_maker, decision_optimizer = manager.create_decision_maker(classifier, state_size=7)
-
-print("Load best trained models ...")
 best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer, -100.0)
-classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
-seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
-buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
 
 print("Prepare samples ...")
 buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(provider,
@@ -157,10 +155,6 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         classifier.seller_auto_encoder = seller
         decision_maker.classifier.seller_auto_encoder = seller
 
-    print("Load best trained models ...")
-    seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
-    buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
-
     if train_classifier > 0:
         all_windows = []
         all_labels = []
@@ -204,11 +198,6 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         Logger.log(train_id, f"trader.classifier: {classifier_loss:.7f}")
         decision_maker.classifier = classifier
 
-    print("Load best trained models ...")
-    classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
-    seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
-    buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
-
     if train_decision_maker > 0:
         print("Deactivate buyer samples detector parameters ...")
         for parameter in decision_maker.classifier.buyer_auto_encoder.parameters():
@@ -222,7 +211,7 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         for parameter in decision_maker.classifier.parameters():
             parameter.requires_grad = False
 
-        reset_on_close = False
+        reset_on_close = True
         training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
         print("Prepare stock exchange environment ...")
         stock_exchange = StockExchange.from_provider(provider,
@@ -248,20 +237,8 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         Logger.log(train_id, f"Stock Exchange Seeds: {stock_exchange.seeds}")
         Logger.log(train_id, f"Trader Best mean value: {best_mean_val:.7f}")
 
-    print("Load best trained models ...")
-    best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer, -100.0)
-    classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
-    seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
-    buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
-
 
 train(run_id, args.train_detectors, args.train_classifier, args.train_decision_maker)
-
-print("Load best trained models ...")
-manager.load_net('trader.decision.maker', decision_maker, decision_optimizer, -100.0)
-manager.load_net('trader.classifier', classifier, classifier_optimizer)
-manager.load_net('seller.auto.encoder', seller, seller_optimizer)
-manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
 
 print(f"Best mean value: {best_mean_val:.7f}")
 trader.trade(run_id, trade_intra_day)
