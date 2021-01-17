@@ -57,7 +57,7 @@ class Trader:
                 True,
                 self.stock_exchange.tickers,
                 max_positions=self.max_limit_positions)
-        result += f'\nTrade Portfolio (max {int(len(self.stock_exchange.tickers) / 3)} stocks): {message}'
+        result += f'\nTrade Portfolio (max {self.max_limit_positions} stocks): {message}'
 
         print(f"Trade all stocks from {self.start_date} to {self.end_date} ...")
         message, all_investments, all_gain_loss = \
@@ -68,7 +68,7 @@ class Trader:
                 True,
                 self.stock_exchange.tickers,
                 max_positions=self.max_positions)
-        result += f'\nTrade All ({len(self.stock_exchange.tickers)} stocks): {message}'
+        result += f'\nTrade All ({self.max_positions} stocks): {message}'
 
         print(f"Buy and hold all stocks from {self.start_date} to {self.end_date} ...")
         message = \

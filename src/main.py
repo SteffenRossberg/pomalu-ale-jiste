@@ -108,7 +108,7 @@ trader = Trader(
     provider,
     decision_maker,
     len(provider.tickers),
-    int(len(provider.tickers) / 3),
+    10,  # int(len(provider.tickers) / 3),
     all_quotes,
     all_tickers,
     trader_start_date,
