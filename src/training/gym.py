@@ -82,13 +82,11 @@ class Gym:
             name,
             agent,
             optimizer,
-            signal_features,
-            signal_labels,
-            none_signal_features,
-            none_signal_labels,
+            features,
+            labels,
             min_loss,
             max_steps=100,
-            batch_size=50000,
+            batch_size=20000,
             stop_predicate=None,
             stop_on_count=10):
 
@@ -110,8 +108,8 @@ class Gym:
             agent,
             optimizer,
             objective,
-            signal_features,
-            signal_labels,
+            features,
+            labels,
             min_loss,
             max_steps,
             batch_size,
@@ -119,8 +117,6 @@ class Gym:
             output,
             best_value_gauge,
             current_value_gauge,
-            none_signal_features,
-            none_signal_labels,
             stop_predicate=stop_predicate,
             stop_on_count=stop_on_count)
 
@@ -138,8 +134,6 @@ class Gym:
             output,
             best_value_gauge,
             current_value_gauge,
-            none_features=None,
-            none_labels=None,
             stop_predicate=None,
             stop_on_count=10):
         step = 0
@@ -151,8 +145,6 @@ class Gym:
                 self.train_run(
                     features,
                     labels,
-                    none_features,
-                    none_labels,
                     agent,
                     optimizer,
                     objective,
@@ -179,23 +171,13 @@ class Gym:
             self,
             features,
             labels,
-            none_features,
-            none_labels,
             agent,
             agent_optimizer,
             objective,
             batch_size):
-        if none_features is not None and none_labels is not None:
-            random = torch.randperm(len(none_features))
-            none_features = torch.from_numpy(none_features)[random]
-            none_labels = torch.from_numpy(none_labels)[random]
-            none_features = none_features.numpy()[:len(features)]
-            none_labels = none_labels.numpy()[:len(features)]
-            features = np.concatenate((features, none_features))
-            labels = np.concatenate((labels, none_labels))
         random = torch.randperm(len(features))
-        features = torch.from_numpy(features)[random].to(self.device)
-        labels = torch.from_numpy(labels)[random].to(self.device)
+        features = torch.tensor(features)[random]
+        labels = torch.tensor(labels)[random]
         losses = []
         for start in range(0, len(features), batch_size):
             stop = start + (batch_size if len(features) - start > batch_size else len(features) - start)
