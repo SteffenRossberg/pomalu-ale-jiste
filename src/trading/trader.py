@@ -227,13 +227,10 @@ class Trader:
                 for ticker in tickers.keys():
                     if row[f'{ticker}_close'] > 0.0 and ticker in portfolio:
                         portfolio[ticker]['last_price'] = row[f'{ticker}_close']
-                # for ticker in portfolio.keys():
-                #     position = portfolio[ticker]
-                #     if self.calculate_position_gain_loss(ticker, position, row) >= 2.0:
-                #         if ticker in actions:
-                #             actions[ticker]['index'] = Actions.Sell
-                #         else:
-                #             actions[ticker] = {'index': Actions.Sell}
+                for ticker in portfolio.keys():
+                    position = portfolio[ticker]
+                    if self.calculate_position_gain_loss(ticker, position, row) >= 5.0:
+                        actions[ticker] = {'index': Actions.Sell}
                 for ticker, action in actions.items():
                     if ticker not in portfolio or not portfolio[ticker]['count'] > 0:
                         continue
@@ -342,14 +339,8 @@ class Trader:
                 price = position['last_price']
             count = portfolio[ticker]['count']
             buy_price = portfolio[ticker]['buy_price']
-            investment -= self.order_fee
-            investment += count * price
-            earnings = (count * price) - (count * buy_price)
-            if earnings > 0.0:
-                tax = earnings * self.tax_rate
-                investment -= tax
-                earnings -= tax
-            gain_loss += earnings
+            investment += self.order_fee
+            investment += count * buy_price
             message = f'{position["buy_date"]} - {row["date"]} - {ticker:5} - '
             message += f'${buy_price:.2f} -> ${price:.2f} (clear position)'
             self.report(message, report_each_trade)
