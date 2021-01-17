@@ -21,7 +21,7 @@ class StockExchange(gym.Env):
                  days,
                  reset_on_close=True,
                  random_offset_on_reset=True,
-                 seeds=None,
+                 seed=None,
                  start_investment=DEFAULT_START_INVESTMENT,
                  trading_fees=DEFAULT_TRADING_FEES,
                  tax_rate=DEFAULT_TAX_RATE):
@@ -32,12 +32,7 @@ class StockExchange(gym.Env):
         self.action_space = gym.spaces.Discrete(n=3)
         self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=self._state.shape, dtype=np.float32)
         self.random_offset_on_reset = random_offset_on_reset
-        self._seeds = seeds
-        self.seed()
-
-    @property
-    def seeds(self):
-        return self._seeds
+        self.seed(seed)
 
     @property
     def train_level(self) -> TrainingLevels:
@@ -83,10 +78,6 @@ class StockExchange(gym.Env):
     def seed(self, seed=None):
         self.np_random, seed1 = seeding.np_random(seed)
         seed2 = seeding.hash_seed(seed1 + 1) % 2 ** 31
-        if self._seeds is None:
-            self._seeds = (seed1, seed2)
-        else:
-            seed1, seed2 = self._seeds
         return [seed1, seed2]
 
     @classmethod

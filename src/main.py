@@ -32,8 +32,8 @@ trader_solidarity_surcharge = 5.5
 # Use the last 5 days as a time frame for sampling, forecasting and trading
 sample_days = 5
 today = datetime.now()
-run_id = f"{today:%Y%m%d.%H%M%S}"
-# run_id = "20210106.224436"
+# run_id = f"{today:%Y%m%d.%H%M%S}"
+run_id = "current"
 
 # get the command line arguments
 parser = argparse.ArgumentParser()
@@ -44,17 +44,17 @@ parser.add_argument("--apikey",
 parser.add_argument("--train_detectors",
                     required=False,
                     type=int,
-                    default=1,
+                    default=0,
                     help="Train buyer/seller detectors (sample auto encoders)")
 parser.add_argument("--train_classifier",
                     required=False,
                     type=int,
-                    default=1,
+                    default=0,
                     help="Train classifier")
 parser.add_argument("--train_decision_maker",
                     required=False,
                     type=int,
-                    default=1,
+                    default=0,
                     help="Train decision maker")
 args = parser.parse_args()
 # use GPU if available
@@ -72,21 +72,19 @@ gym = Gym(manager)
 
 print("Create buyer auto encoder ...")
 buyer, buyer_optimizer = manager.create_auto_encoder(sample_days)
+buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
 
 print("Create seller auto encoder ...")
 seller, seller_optimizer = manager.create_auto_encoder(sample_days)
+seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
 
 print("Create classifier ...")
 classifier, classifier_optimizer = manager.create_classifier(buyer, seller)
+classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
 
 print("Create decision maker ...")
 decision_maker, decision_optimizer = manager.create_decision_maker(classifier, state_size=7)
-
-print("Load best trained models ...")
 best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer, -100.0)
-classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
-seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
-buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
 
 print("Prepare samples ...")
 buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(provider,
@@ -157,10 +155,6 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         classifier.seller_auto_encoder = seller
         decision_maker.classifier.seller_auto_encoder = seller
 
-    print("Load best trained models ...")
-    seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
-    buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
-
     if train_classifier > 0:
         all_windows = []
         all_labels = []
@@ -204,11 +198,6 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         Logger.log(train_id, f"trader.classifier: {classifier_loss:.7f}")
         decision_maker.classifier = classifier
 
-    print("Load best trained models ...")
-    classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
-    seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
-    buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
-
     if train_decision_maker > 0:
         print("Deactivate buyer samples detector parameters ...")
         for parameter in decision_maker.classifier.buyer_auto_encoder.parameters():
@@ -229,7 +218,8 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
                                                      sample_days,
                                                      train_start_date,
                                                      train_end_date,
-                                                     reset_on_close=reset_on_close)
+                                                     reset_on_close=reset_on_close,
+                                                     seed=1234567890)
         print(f"Train decision maker {str(training_level)} (reset on close = {reset_on_close}) ...")
         stock_exchange.train_level = training_level
         gym.train_decision_maker(
@@ -242,26 +232,21 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
             stop_on_count=5)
         print("Reload decision maker with best training result after training ...")
         best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer)
-        print(f"Seeds: {stock_exchange.seeds}")
         Logger.log(train_id, f"Train Level: {str(training_level)}")
         Logger.log(train_id, f"Reset On Close: {reset_on_close}")
-        Logger.log(train_id, f"Stock Exchange Seeds: {stock_exchange.seeds}")
         Logger.log(train_id, f"Trader Best mean value: {best_mean_val:.7f}")
 
-    print("Load best trained models ...")
-    best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer, -100.0)
-    classifier_loss = manager.load_net('trader.classifier', classifier, classifier_optimizer)
-    seller_loss = manager.load_net('seller.auto.encoder', seller, seller_optimizer)
-    buyer_loss = manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
+    manager.save_net(f'buyer.auto.encoder', buyer, buyer_optimizer, loss=buyer_loss)
+    manager.save_net(f'buyer.encoder', buyer.encoder, loss=buyer_loss)
+    manager.save_net(f'buyer.decoder', buyer.decoder, loss=buyer_loss)
+    manager.save_net(f'seller.auto.encoder', seller, seller_optimizer, loss=seller_loss)
+    manager.save_net(f'seller.encoder', seller.encoder, loss=seller_loss)
+    manager.save_net(f'seller.decoder', seller.decoder, loss=seller_loss)
+    manager.save_net(f'trader.classifier', classifier, classifier_optimizer, loss=classifier_loss)
+    manager.save_net(f'trader.decision.maker', decision_maker, decision_optimizer, loss=best_mean_val)
 
 
 train(run_id, args.train_detectors, args.train_classifier, args.train_decision_maker)
-
-print("Load best trained models ...")
-manager.load_net('trader.decision.maker', decision_maker, decision_optimizer, -100.0)
-manager.load_net('trader.classifier', classifier, classifier_optimizer)
-manager.load_net('seller.auto.encoder', seller, seller_optimizer)
-manager.load_net('buyer.auto.encoder', buyer, buyer_optimizer)
 
 print(f"Best mean value: {best_mean_val:.7f}")
 trader.trade(run_id, trade_intra_day)
