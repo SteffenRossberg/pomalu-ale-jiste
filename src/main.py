@@ -32,8 +32,8 @@ trader_solidarity_surcharge = 5.5
 # Use the last 5 days as a time frame for sampling, forecasting and trading
 sample_days = 5
 today = datetime.now()
-run_id = f"{today:%Y%m%d.%H%M%S}"
-# run_id = "20210106.224436"
+# run_id = f"{today:%Y%m%d.%H%M%S}"
+run_id = "current"
 
 # get the command line arguments
 parser = argparse.ArgumentParser()
@@ -44,17 +44,17 @@ parser.add_argument("--apikey",
 parser.add_argument("--train_detectors",
                     required=False,
                     type=int,
-                    default=1,
+                    default=0,
                     help="Train buyer/seller detectors (sample auto encoders)")
 parser.add_argument("--train_classifier",
                     required=False,
                     type=int,
-                    default=1,
+                    default=0,
                     help="Train classifier")
 parser.add_argument("--train_decision_maker",
                     required=False,
                     type=int,
-                    default=1,
+                    default=0,
                     help="Train decision maker")
 args = parser.parse_args()
 # use GPU if available
@@ -211,14 +211,15 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         for parameter in decision_maker.classifier.parameters():
             parameter.requires_grad = False
 
-        reset_on_close = True
+        reset_on_close = False
         training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
         print("Prepare stock exchange environment ...")
         stock_exchange = StockExchange.from_provider(provider,
                                                      sample_days,
                                                      train_start_date,
                                                      train_end_date,
-                                                     reset_on_close=reset_on_close)
+                                                     reset_on_close=reset_on_close,
+                                                     seed=1234567890)
         print(f"Train decision maker {str(training_level)} (reset on close = {reset_on_close}) ...")
         stock_exchange.train_level = training_level
         gym.train_decision_maker(
@@ -231,11 +232,18 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
             stop_on_count=5)
         print("Reload decision maker with best training result after training ...")
         best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer)
-        print(f"Seeds: {stock_exchange.seeds}")
         Logger.log(train_id, f"Train Level: {str(training_level)}")
         Logger.log(train_id, f"Reset On Close: {reset_on_close}")
-        Logger.log(train_id, f"Stock Exchange Seeds: {stock_exchange.seeds}")
         Logger.log(train_id, f"Trader Best mean value: {best_mean_val:.7f}")
+
+    manager.save_net(f'buyer.auto.encoder', buyer, buyer_optimizer, loss=buyer_loss)
+    manager.save_net(f'buyer.encoder', buyer.encoder, loss=buyer_loss)
+    manager.save_net(f'buyer.decoder', buyer.decoder, loss=buyer_loss)
+    manager.save_net(f'seller.auto.encoder', seller, seller_optimizer, loss=seller_loss)
+    manager.save_net(f'seller.encoder', seller.encoder, loss=seller_loss)
+    manager.save_net(f'seller.decoder', seller.decoder, loss=seller_loss)
+    manager.save_net(f'trader.classifier', classifier, classifier_optimizer, loss=classifier_loss)
+    manager.save_net(f'trader.decision.maker', decision_maker, decision_optimizer, loss=best_mean_val)
 
 
 train(run_id, args.train_detectors, args.train_classifier, args.train_decision_maker)
