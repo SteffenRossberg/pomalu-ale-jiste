@@ -4,7 +4,7 @@
 chew through some time series like stock prices.
 
 ![pomalu-ale-jiste](docs/Trader.vs.MSCI.World.ETF.png)
-*Screenshot of pomalu-ale-jiste v0.0.1 release
+* taken from pomalu-ale-jiste v0.0.2 release
 
 ## my way I will go ...
 
