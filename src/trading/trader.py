@@ -44,14 +44,18 @@ class Trader:
     def trade(
             self,
             run_id,
-            intraday=False):
+            intraday=False,
+            decision_maker=None):
+
+        if decision_maker is None:
+            decision_maker = self.decision_maker
 
         result = ''
 
         print(f"Trade limited all stocks from {self.start_date} to {self.end_date} ...")
         message, limit_all_investments, limit_all_gain_loss = \
             self._trade(
-                self.decision_maker,
+                decision_maker,
                 self.all_quotes,
                 self.all_tickers,
                 True,
@@ -62,7 +66,7 @@ class Trader:
         print(f"Trade all stocks from {self.start_date} to {self.end_date} ...")
         message, all_investments, all_gain_loss = \
             self._trade(
-                self.decision_maker,
+                decision_maker,
                 self.all_quotes,
                 self.all_tickers,
                 True,
