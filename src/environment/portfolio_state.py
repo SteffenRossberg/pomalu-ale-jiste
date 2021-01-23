@@ -19,11 +19,21 @@ class PortfolioState:
         self._frame = None
         self._offset = None
         self._investment = self._start_investment
+        self._profit = 0.0
+        self._profit_rate = 0.0
         self._stock_count = 0
         self._buy_price = 0.0
         self._top_price = 0.0
         self.__train_level = TrainingLevels.Buy
         self._should_hold = False
+
+    @property
+    def profit(self):
+        return self._profit
+
+    @property
+    def profit_rate(self):
+        return self._profit_rate
 
     @property
     def investment(self):
@@ -78,6 +88,8 @@ class PortfolioState:
         self._frame = frame
         self._investment = self._start_investment
         self._offset = offset
+        self._profit = 0.0
+        self._profit_rate = 0.0
         self._stock_count = 0
         self._buy_price = 0.0
         self._top_price = self._frame['prices'][self._offset]
@@ -108,6 +120,8 @@ class PortfolioState:
             self._stock_count = count
             self._buy_price = price
             self._top_price = price
+            self._profit = 0.0
+            self._profit_rate = 0.0
             done |= not sell_price > 0.0
         elif action == Actions.Sell and self._stock_count > 0:
             reward -= (self.trading_fees / (self._stock_count * price)) * 100.0
@@ -117,8 +131,10 @@ class PortfolioState:
                 else:
                     reward += self.calculate_reward(price, sell_price)
             self._investment -= self.trading_fees
-            self._investment += count * price
-            self._investment -= ((count * price) - (count * self._buy_price)) * (self.tax_rate if reward > 0.0 else 1.0)
+            self._investment += self._stock_count * price
+            self._profit = (self._stock_count * price) - (self._stock_count * self._buy_price)
+            self._profit_rate = (((self._stock_count * price) / (self._stock_count * self._buy_price)) - 1.0) * 100.0
+            self._investment -= self._profit * (self.tax_rate if self._profit > 0.0 else 1.0)
             self._stock_count = 0
             self._buy_price = 0.0
             self._top_price = price

@@ -211,29 +211,37 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         for parameter in decision_maker.classifier.parameters():
             parameter.requires_grad = False
 
-        reset_on_close = False
-        training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
         print("Prepare stock exchange environment ...")
-        stock_exchange = StockExchange.from_provider(provider,
-                                                     sample_days,
-                                                     train_start_date,
-                                                     train_end_date,
-                                                     reset_on_close=reset_on_close,
-                                                     seed=1234567890)
-        print(f"Train decision maker {str(training_level)} (reset on close = {reset_on_close}) ...")
-        stock_exchange.train_level = training_level
+        training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
+        train_stock_exchange = StockExchange.from_provider(
+            provider,
+            sample_days,
+            train_start_date,
+            train_end_date,
+            random_offset_on_reset=False,
+            reset_on_close=False,
+            seed=1234567890)
+        validation_stock_exchange = StockExchange.from_provider(
+            provider,
+            sample_days,
+            train_start_date,
+            train_end_date,
+            random_offset_on_reset=True,
+            reset_on_close=True,
+            seed=1234567890)
+        print(f"Train decision maker {str(training_level)} ...")
+        train_stock_exchange.train_level = training_level
+        validation_stock_exchange.train_level = training_level
         gym.train_decision_maker(
             'trader',
             decision_maker,
             decision_optimizer,
             best_mean_val,
-            stock_exchange,
-            stop_predicate=lambda mean_value: mean_value > 220.0,
-            stop_on_count=5)
+            train_stock_exchange,
+            validation_stock_exchange)
         print("Reload decision maker with best training result after training ...")
         best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer)
         Logger.log(train_id, f"Train Level: {str(training_level)}")
-        Logger.log(train_id, f"Reset On Close: {reset_on_close}")
         Logger.log(train_id, f"Trader Best mean value: {best_mean_val:.7f}")
 
     manager.save_net(f'buyer.auto.encoder', buyer, buyer_optimizer, loss=buyer_loss)
