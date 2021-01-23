@@ -1,5 +1,4 @@
 import numpy as np
-import math
 from src.environment.enums import Actions, TrainingLevels
 
 
@@ -25,7 +24,6 @@ class PortfolioState:
         self._buy_price = 0.0
         self._top_price = 0.0
         self.__train_level = TrainingLevels.Buy
-        self._should_hold = False
 
     @property
     def profit(self):
@@ -93,7 +91,6 @@ class PortfolioState:
         self._stock_count = 0
         self._buy_price = 0.0
         self._top_price = self._frame['prices'][self._offset]
-        self._should_hold = False
 
     def step(self, action):
         reward = 0.0
@@ -104,15 +101,11 @@ class PortfolioState:
         buy_signal = self._frame['buy_signals'][self._offset]
         sell_signal = self._frame['sell_signals'][self._offset]
         count = int((self._investment - self.trading_fees) / price)
-        if buy_signal > 0.0:
-            self._should_hold = True
-        elif sell_signal > 0.0:
-            self._should_hold = False
         if action == Actions.Buy and self._stock_count == 0 and count > 0:
             reward -= (self.trading_fees / (count * price)) * 100.0
             if self.__train_level & TrainingLevels.Buy == TrainingLevels.Buy:
                 if buy_signal > 0.0:
-                    reward += 100.0
+                    reward += 20.0
                 else:
                     reward += self.calculate_reward(price, buy_price)
             self._investment -= self.trading_fees
@@ -127,7 +120,7 @@ class PortfolioState:
             reward -= (self.trading_fees / (self._stock_count * price)) * 100.0
             if self.__train_level & TrainingLevels.Sell == TrainingLevels.Sell:
                 if sell_signal > 0.0:
-                    reward += 100.0
+                    reward += 20.0
                 else:
                     reward += self.calculate_reward(price, sell_price)
             self._investment -= self.trading_fees
@@ -141,17 +134,13 @@ class PortfolioState:
             done |= self.reset_on_close or not buy_price > 0.0
         elif action == Actions.SkipOrHold and self._stock_count == 0:
             if self.__train_level & TrainingLevels.Skip == TrainingLevels.Skip:
-                if self._should_hold:
-                    reward -= 5.0
-                elif buy_signal > 0.0:
+                if buy_signal > 0.0:
                     reward -= 20.0
                 else:
                     reward += self.calculate_reward(price, buy_price) * -1.0
         elif action == Actions.SkipOrHold and self._stock_count > 0:
             if self.__train_level & TrainingLevels.Hold == TrainingLevels.Hold:
-                if not self._should_hold:
-                    reward -= 5.0
-                elif sell_signal > 0.0:
+                if sell_signal > 0.0:
                     reward -= 20.0
                 else:
                     reward += self.calculate_reward(price, sell_price) * -1.0
