@@ -24,6 +24,7 @@ train_end_date = '2015-12-31'
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'
+trader_decision_maker = 'trader.decision.maker'
 trade_intra_day = False
 trader_start_capital = 50_000.0
 trader_order_fee = 1.0
@@ -199,17 +200,6 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         decision_maker.classifier = classifier
 
     if train_decision_maker > 0:
-        print("Deactivate buyer samples detector parameters ...")
-        for parameter in decision_maker.classifier.buyer_auto_encoder.parameters():
-            parameter.requires_grad = False
-
-        print("Deactivate seller samples detector parameters ...")
-        for parameter in decision_maker.classifier.seller_auto_encoder.parameters():
-            parameter.requires_grad = False
-
-        print("Deactivate classifier parameters ...")
-        for parameter in decision_maker.classifier.parameters():
-            parameter.requires_grad = False
 
         print("Prepare stock exchange environment ...")
         training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
@@ -255,6 +245,7 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
 
 
 train(run_id, args.train_detectors, args.train_classifier, args.train_decision_maker)
+if trader_decision_maker is not None:
+    best_mean_val = manager.load_net(trader_decision_maker, decision_maker, decision_optimizer, -100.0)
 
-print(f"Best mean value: {best_mean_val:.7f}")
 trader.trade(run_id, trade_intra_day)
