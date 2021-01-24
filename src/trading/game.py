@@ -6,7 +6,7 @@ from src.utility.logger import Logger
 from src.environment.enums import Actions
 
 
-class Trader:
+class Game:
 
     def __init__(
             self,

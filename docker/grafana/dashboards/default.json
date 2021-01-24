@@ -66,15 +66,9 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "train_seller_auto_encoder_current_value",
-          "interval": "",
-          "legendFormat": "",
-          "refId": "A"
-        },
-        {
           "expr": "train_buyer_auto_encoder_current_value",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "buyer current loss",
           "refId": "B"
         }
       ],
@@ -82,7 +76,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Detectors Train Results",
+      "title": "Buyer train result",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -142,7 +136,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 7,
         "w": 9,
         "x": 11,
         "y": 0
@@ -231,7 +225,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
+        "h": 14,
         "w": 4,
         "x": 20,
         "y": 0
@@ -285,10 +279,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 5,
+        "h": 7,
         "w": 9,
         "x": 11,
-        "y": 5
+        "y": 7
       },
       "heatmap": {},
       "hideZeroBuckets": false,
@@ -349,13 +343,13 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
+        "h": 10,
         "w": 11,
         "x": 0,
         "y": 10
       },
       "hiddenSeries": false,
-      "id": 4,
+      "id": 13,
       "legend": {
         "avg": false,
         "current": false,
@@ -382,17 +376,17 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "train_trader_classifier_current_value",
+          "expr": "train_seller_auto_encoder_current_value",
           "interval": "",
-          "legendFormat": "",
-          "refId": "A"
+          "legendFormat": "seller current loss",
+          "refId": "B"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Classifier Train Results",
+      "title": "Seller train result",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -445,10 +439,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 17,
+        "h": 16,
         "w": 13,
         "x": 11,
-        "y": 10
+        "y": 14
       },
       "hiddenSeries": false,
       "id": 7,
@@ -548,10 +542,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 9,
+        "h": 10,
         "w": 11,
         "x": 0,
-        "y": 18
+        "y": 20
       },
       "hiddenSeries": false,
       "id": 6,
@@ -581,13 +575,13 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "train_trader_decision_maker_current_value",
+          "expr": "train_decision_maker_current_value",
           "interval": "",
           "legendFormat": "current mean value",
           "refId": "A"
         },
         {
-          "expr": "train_trader_decision_maker_best_value",
+          "expr": "train_decision_maker_best_value",
           "interval": "",
           "legendFormat": "best mean value",
           "refId": "B"
@@ -613,6 +607,7 @@
       },
       "yaxes": [
         {
+          "$$hashKey": "object:175",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -621,6 +616,7 @@
           "show": true
         },
         {
+          "$$hashKey": "object:176",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -650,5 +646,5 @@
   "timezone": "",
   "title": "pomalu, ale jistĕ ...",
   "uid": "lQzG62-Gz",
-  "version": 2
+  "version": 4
 }
