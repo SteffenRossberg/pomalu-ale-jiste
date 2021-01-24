@@ -175,7 +175,7 @@
         "decimals": null,
         "format": "percent",
         "logBase": 1,
-        "max": "3",
+        "max": "2",
         "min": "0",
         "show": true,
         "splitFactor": null
@@ -319,7 +319,7 @@
         "format": "percent",
         "logBase": 1,
         "max": "0",
-        "min": "-3",
+        "min": "-2",
         "show": true,
         "splitFactor": null
       },
@@ -639,12 +639,12 @@
     "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "pomalu, ale jistĕ ...",
   "uid": "lQzG62-Gz",
-  "version": 4
+  "version": 1
 }
