@@ -8,6 +8,7 @@ from prometheus_client import Gauge
 from src.environment.stock_exchange import StockExchange
 from src.environment.enums import Actions
 
+
 class Gym:
 
     def __init__(self, manager):
@@ -207,8 +208,12 @@ class Gym:
             train_stock_exchange,
             validation_stock_exchange):
 
-        def save(manager, loss_value):
-            manager.save_net(f'{name}.decision.maker', model, optimizer, loss=loss_value)
+        def save(manager, loss_value, suffix=None):
+            if suffix is not None:
+                suffix = f'.{suffix}'
+            else:
+                suffix = ''
+            manager.save_net(f'{name}.decision.maker{suffix}', model, optimizer, loss=loss_value)
 
         best_value_gauge = self.get_gauge(
             f'train_{name}_decision_maker_best_value',
@@ -239,6 +244,8 @@ class Gym:
         evaluation_states = None
         learn_step = 0
         best_mean_val = 0
+        mean_profit_rate = -100.0
+        profit_rate_counter = 0
         while learn_step < self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE:
             step_index += 1
             experience_buffer.populate(1)
@@ -268,17 +275,23 @@ class Gym:
                     learn_step += 1
                 current_value_gauge.set(mean_val)
 
-                mean_profit_rate = self.validation_run(validation_stock_exchange, model, 50)['order_profit_rates']
+                means = self.validation_run(validation_stock_exchange, model, 50)
+                mean_profit_rate = means['order_profit_rates']
                 if best_mean_profit_rate < mean_profit_rate:
                     print(f"{step_index:6}:{str(train_stock_exchange.train_level)} " +
-                          f"Mean profit rate updated {best_mean_profit_rate:.7f} -> {mean_profit_rate:.7f}")
+                          f"Mean profit rate updated {best_mean_profit_rate:.2f} -> {mean_profit_rate:.2f}")
                     save(self.manager, best_mean_profit_rate)
                     best_mean_profit_rate = mean_profit_rate
-                    best_trader_value_gauge.set(best_mean_profit_rate)
+                    best_trader_value_gauge.set(mean_profit_rate)
                 else:
                     print(f"{step_index:6}:{str(train_stock_exchange.train_level)} " +
-                          f"Mean profit rate: {mean_profit_rate:.7f}")
+                          f"Mean profit rate: {mean_profit_rate:.2f}")
+
                 current_trader_value_gauge.set(mean_profit_rate)
+
+                profit_rate_counter = (profit_rate_counter + 1) if mean_profit_rate > 0.0 else 0
+                if profit_rate_counter >= 15:
+                    break
 
             optimizer.zero_grad()
             batch = experience_buffer.sample(self.RL_BATCH_SIZE)
@@ -292,6 +305,8 @@ class Gym:
 
             if step_index % self.RL_TARGET_NET_SYNC == 0:
                 target_net.sync()
+
+        save(self.manager, mean_profit_rate, 'last')
 
     def validation_run(self, env: StockExchange, trader, episodes=100):
         stats = {
