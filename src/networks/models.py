@@ -60,6 +60,7 @@ class Trader(nn.Module):
         square = diff * diff
         square = square.reshape(square.shape[0], 1, square.shape[-2], square.shape[-1])
         mse = torch.mean(square, dim=(2, 3))
+        mse = 1.0 - mse
         return mse
 
     @staticmethod
