@@ -19,7 +19,9 @@ start_http_server(5000, '0.0.0.0')
 
 # Let's train data of 16 years from 01/01/2000 to 12/31/2015
 train_start_date = '2000-01-01'
-train_end_date = '2015-12-31'
+train_end_date = '2012-12-31'
+validation_start_date = '2013-01-01'
+validation_end_date = '2015-12-31'
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'
@@ -174,8 +176,8 @@ def train(train_id, train_buyer, train_seller, train_trader):
         validation_stock_exchange = StockExchange.from_provider(
             provider,
             sample_days,
-            train_start_date,
-            train_end_date,
+            validation_start_date,
+            validation_end_date,
             random_offset_on_reset=True,
             reset_on_close=True,
             seed=1234567890)
