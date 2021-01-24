@@ -212,13 +212,13 @@ class Gym:
                 if best_mean_val is None or best_mean_val < mean_val:
                     if best_mean_val is not None:
                         print(f"{step_index:6}:{learn_step:4}:{train_stock_exchange.train_level} " +
-                              f"Mean value updated {best_mean_val:.7f} -> {mean_val:.7f}")
+                              f"Mean value updated {best_mean_val:.3f} -> {mean_val:.3f}")
                     best_mean_val = mean_val
                     learn_step = 0
                     best_value_gauge.set(best_mean_val)
                 else:
                     print(f"{step_index:6}:{learn_step:4}:{train_stock_exchange.train_level} " +
-                          f"Mean value {mean_val:.7f}")
+                          f"Mean value {mean_val:.3f}")
                     learn_step += 1
                 current_value_gauge.set(mean_val)
 
@@ -237,7 +237,7 @@ class Gym:
                 current_trader_value_gauge.set(mean_profit_rate)
 
                 profit_rate_counter = (profit_rate_counter + 1) if mean_profit_rate > 0.0 else 0
-                if profit_rate_counter >= 15:
+                if profit_rate_counter >= 10:
                     break
 
             optimizer.zero_grad()
