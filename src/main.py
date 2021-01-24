@@ -24,6 +24,7 @@ train_end_date = '2015-12-31'
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'
+trader_decision_maker = 'trader.decision.maker'
 trade_intra_day = False
 trader_start_capital = 50_000.0
 trader_order_fee = 1.0
@@ -108,7 +109,7 @@ trader = Trader(
     provider,
     decision_maker,
     len(provider.tickers),
-    int(len(provider.tickers) / 3),
+    10,  # int(len(provider.tickers) / 3),
     all_quotes,
     all_tickers,
     trader_start_date,
@@ -199,41 +200,38 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
         decision_maker.classifier = classifier
 
     if train_decision_maker > 0:
-        print("Deactivate buyer samples detector parameters ...")
-        for parameter in decision_maker.classifier.buyer_auto_encoder.parameters():
-            parameter.requires_grad = False
 
-        print("Deactivate seller samples detector parameters ...")
-        for parameter in decision_maker.classifier.seller_auto_encoder.parameters():
-            parameter.requires_grad = False
-
-        print("Deactivate classifier parameters ...")
-        for parameter in decision_maker.classifier.parameters():
-            parameter.requires_grad = False
-
-        reset_on_close = False
-        training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
         print("Prepare stock exchange environment ...")
-        stock_exchange = StockExchange.from_provider(provider,
-                                                     sample_days,
-                                                     train_start_date,
-                                                     train_end_date,
-                                                     reset_on_close=reset_on_close,
-                                                     seed=1234567890)
-        print(f"Train decision maker {str(training_level)} (reset on close = {reset_on_close}) ...")
-        stock_exchange.train_level = training_level
+        training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
+        train_stock_exchange = StockExchange.from_provider(
+            provider,
+            sample_days,
+            train_start_date,
+            train_end_date,
+            random_offset_on_reset=False,
+            reset_on_close=False,
+            seed=1234567890)
+        validation_stock_exchange = StockExchange.from_provider(
+            provider,
+            sample_days,
+            train_start_date,
+            train_end_date,
+            random_offset_on_reset=True,
+            reset_on_close=True,
+            seed=1234567890)
+        print(f"Train decision maker {str(training_level)} ...")
+        train_stock_exchange.train_level = training_level
+        validation_stock_exchange.train_level = training_level
         gym.train_decision_maker(
             'trader',
             decision_maker,
             decision_optimizer,
             best_mean_val,
-            stock_exchange,
-            stop_predicate=lambda mean_value: mean_value > 220.0,
-            stop_on_count=5)
+            train_stock_exchange,
+            validation_stock_exchange)
         print("Reload decision maker with best training result after training ...")
         best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer)
         Logger.log(train_id, f"Train Level: {str(training_level)}")
-        Logger.log(train_id, f"Reset On Close: {reset_on_close}")
         Logger.log(train_id, f"Trader Best mean value: {best_mean_val:.7f}")
 
     manager.save_net(f'buyer.auto.encoder', buyer, buyer_optimizer, loss=buyer_loss)
@@ -247,6 +245,7 @@ def train(train_id, train_detectors, train_classifier, train_decision_maker):
 
 
 train(run_id, args.train_detectors, args.train_classifier, args.train_decision_maker)
+if trader_decision_maker is not None:
+    best_mean_val = manager.load_net(trader_decision_maker, decision_maker, decision_optimizer, -100.0)
 
-print(f"Best mean value: {best_mean_val:.7f}")
 trader.trade(run_id, trade_intra_day)
