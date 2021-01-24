@@ -24,7 +24,7 @@ train_end_date = '2015-12-31'
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'
-trader_decision_maker = 'trader.decision.maker.latest'
+trader_decision_maker = 'trader.decision.maker'
 trade_intra_day = False
 trader_start_capital = 50_000.0
 trader_order_fee = 1.0
@@ -88,18 +88,20 @@ decision_maker, decision_optimizer = manager.create_decision_maker(classifier, s
 best_mean_val = manager.load_net('trader.decision.maker', decision_maker, decision_optimizer, -100.0)
 
 print("Prepare samples ...")
-buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(provider,
-                                                                         days=sample_days,
-                                                                         start_date=train_start_date,
-                                                                         end_date=train_end_date)
+buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(
+    provider,
+    days=sample_days,
+    start_date=train_start_date,
+    end_date=train_end_date)
 
 print("Prepare quotes ...")
-all_quotes, all_tickers = DataPreparator.prepare_all_quotes(provider,
-                                                            sample_days,
-                                                            trader_start_date,
-                                                            trader_end_date,
-                                                            provider.tickers,
-                                                            trade_intra_day)
+all_quotes, all_tickers = DataPreparator.prepare_all_quotes(
+    provider,
+    sample_days,
+    trader_start_date,
+    trader_end_date,
+    provider.tickers,
+    trade_intra_day)
 
 print("Prepare frames ...")
 frames = DataPreparator.prepare_frames(provider, sample_days, train_start_date, train_end_date)
@@ -109,7 +111,7 @@ trader = Trader(
     provider,
     decision_maker,
     len(provider.tickers),
-    10,  # int(len(provider.tickers) / 3),
+    int(len(provider.tickers) / 3),
     all_quotes,
     all_tickers,
     trader_start_date,
