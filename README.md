@@ -38,13 +38,33 @@ quite perfect for this purpose.
 
 You can find more details here: https://api.tiingo.com
 
+## the visualization of training ...
+
+To visualize the training process, I use [Prometheus](https://prometheus.io/)
+and [Grafana](https://grafana.com/).
+ 
+![pomalu-ale-jiste](docs/Train.Progress.png)
+
+### Prerequisits
+
+- Install docker and docker-compose, further details in ["Get Docker"](https://docs.docker.com/get-docker/)
+
+### Run
+1. Execute ```docker-compose up``` inside of ```pomalu-ale-jiste/docker``` folder 
+in your favorite command shell
+1. Open Grafana by navigating to [http://localhost:3000](http://localhost:3000) in
+your favorite browser
+1. Log in to Grafana with the user ```admin``` and the password ```admin```, then
+Grafana will ask for a new password by default.
+1. Navigate to ```pomalu-ale-jiste``` dashboard in folder ```Services```
+
 ## WARNING
 
 Some events and data may already be priced into the historical data and form
 a possible indicator to predict something in the future.
 
 The TRUE story is:
-The EXCHANGE MARKET is A VERY COMPLEX AND VOLATILE BEAST!
+The EXCHANGE MARKET is VERY COMPLEX AND VOLATILE!
 There are a multitude of factors, such as events, data, crises, and even
 the current weather conditions at that moment can affect the market,
 resulting in a HUGE LOSS or minimal gain in the shares.
