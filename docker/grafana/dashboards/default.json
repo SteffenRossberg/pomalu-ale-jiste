@@ -445,7 +445,7 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 22,
+        "h": 17,
         "w": 13,
         "x": 11,
         "y": 10
@@ -548,7 +548,7 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 14,
+        "h": 9,
         "w": 11,
         "x": 0,
         "y": 18
@@ -650,5 +650,5 @@
   "timezone": "",
   "title": "pomalu, ale jistĕ ...",
   "uid": "lQzG62-Gz",
-  "version": 1
+  "version": 2
 }
