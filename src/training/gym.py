@@ -5,6 +5,8 @@ from ptan.agent import TargetNet, DQNAgent
 from ptan.actions import EpsilonGreedyActionSelector
 from ptan.experience import ExperienceSourceFirstLast, ExperienceReplayBuffer
 from prometheus_client import Gauge
+from src.environment.stock_exchange import StockExchange
+from src.environment.enums import Actions
 
 
 class Gym:
@@ -23,7 +25,7 @@ class Gym:
         self.RL_EPSILON_STOP = 0.1
         self.RL_EPSILON_STEPS = 1_000_000
         self.RL_REWARD_STEPS = 2
-        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 20
+        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 50
         self.gauges = {}
 
     def get_gauge(self, name, description):
@@ -163,9 +165,9 @@ class Gym:
             elif max_steps > step:
                 output(epoch, step, agent_loss, False)
                 step += 1
-                current_value_gauge.set(agent_loss)
             else:
                 return
+            current_value_gauge.set(agent_loss)
 
     def train_run(
             self,
@@ -202,35 +204,48 @@ class Gym:
             name,
             model,
             optimizer,
-            best_mean_val,
-            stock_exchange,
-            stop_predicate=None,
-            stop_on_count=10):
+            best_mean_profit_rate,
+            train_stock_exchange,
+            validation_stock_exchange):
 
-        def save(manager, loss_value):
-            manager.save_net(f'{name}.decision.maker', model, optimizer, loss=loss_value)
+        def save(manager, loss_value, suffix=None):
+            if suffix is not None:
+                suffix = f'.{suffix}'
+            else:
+                suffix = ''
+            manager.save_net(f'{name}.decision.maker{suffix}', model, optimizer, loss=loss_value)
 
         best_value_gauge = self.get_gauge(
             f'train_{name}_decision_maker_best_value',
-            f'Best value of {name}.classifier training')
+            f'Best value of {name}.decision_maker training')
         current_value_gauge = self.get_gauge(
             f'train_{name}_decision_maker_current_value',
-            f'Current value of {name}.classifier training')
+            f'Current value of {name}.decision_maker training')
+
+        best_trader_value_gauge = self.get_gauge(
+            f'train_{name}_best_value',
+            f'Best value of {name} training')
+        current_trader_value_gauge = self.get_gauge(
+            f'train_{name}_current_value',
+            f'Current value of {name} training')
 
         criterion = nn.MSELoss()
         target_net = TargetNet(model)
         selector = EpsilonGreedyActionSelector(self.RL_EPSILON_START)
         agent = DQNAgent(model, selector, device=self.device)
-        experience_source = ExperienceSourceFirstLast(stock_exchange,
-                                                      agent,
-                                                      self.RL_GAMMA,
-                                                      steps_count=self.RL_REWARD_STEPS)
+        experience_source = ExperienceSourceFirstLast(
+            train_stock_exchange,
+            agent,
+            self.RL_GAMMA,
+            steps_count=self.RL_REWARD_STEPS)
         experience_buffer = ExperienceReplayBuffer(experience_source, self.RL_REPLAY_SIZE)
 
         step_index = 0
         evaluation_states = None
         learn_step = 0
-        stop_steps = 0
+        best_mean_val = 0
+        mean_profit_rate = -100.0
+        profit_rate_counter = 0
         while learn_step < self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE:
             step_index += 1
             experience_buffer.populate(1)
@@ -249,22 +264,34 @@ class Gym:
                 mean_val = self.calculate_values_of_states(evaluation_states, model)
                 if best_mean_val is None or best_mean_val < mean_val:
                     if best_mean_val is not None:
-                        print(f"{step_index:6}:{learn_step:4}:{stock_exchange.train_level} " +
+                        print(f"{step_index:6}:{learn_step:4}:{train_stock_exchange.train_level} " +
                               f"Mean value updated {best_mean_val:.7f} -> {mean_val:.7f}")
                     best_mean_val = mean_val
-                    save(self.manager, best_mean_val)
                     learn_step = 0
                     best_value_gauge.set(best_mean_val)
                 else:
-                    print(f"{step_index:6}:{learn_step:4}:{stock_exchange.train_level} " +
+                    print(f"{step_index:6}:{learn_step:4}:{train_stock_exchange.train_level} " +
                           f"Mean value {mean_val:.7f}")
                     learn_step += 1
-                    current_value_gauge.set(mean_val)
-                if stop_predicate is not None and stop_predicate(mean_val):
-                    stop_steps += 1
-                    if stop_on_count <= stop_steps:
-                        save(self.manager, mean_val)
-                        break
+                current_value_gauge.set(mean_val)
+
+                means = self.validation_run(validation_stock_exchange, model, 50)
+                mean_profit_rate = means['order_profit_rates']
+                if best_mean_profit_rate < mean_profit_rate:
+                    print(f"{step_index:6}:{str(train_stock_exchange.train_level)} " +
+                          f"Mean profit rate updated {best_mean_profit_rate:.2f} -> {mean_profit_rate:.2f}")
+                    save(self.manager, best_mean_profit_rate)
+                    best_mean_profit_rate = mean_profit_rate
+                    best_trader_value_gauge.set(mean_profit_rate)
+                else:
+                    print(f"{step_index:6}:{str(train_stock_exchange.train_level)} " +
+                          f"Mean profit rate: {mean_profit_rate:.2f}")
+
+                current_trader_value_gauge.set(mean_profit_rate)
+
+                profit_rate_counter = (profit_rate_counter + 1) if mean_profit_rate > 0.0 else 0
+                if profit_rate_counter >= 15:
+                    break
 
             optimizer.zero_grad()
             batch = experience_buffer.sample(self.RL_BATCH_SIZE)
@@ -278,6 +305,49 @@ class Gym:
 
             if step_index % self.RL_TARGET_NET_SYNC == 0:
                 target_net.sync()
+
+        save(self.manager, mean_profit_rate, 'last')
+
+    def validation_run(self, env: StockExchange, trader, episodes=100):
+        stats = {
+            'episode_reward': [],
+            'episode_steps': [],
+            'order_profits': [],
+            'order_profit_rates': [],
+            'order_steps': [],
+        }
+
+        for episode in range(episodes):
+            obs = env.reset()
+
+            total_reward = 0.0
+            position_steps = None
+            episode_steps = 0
+
+            while True:
+                features = torch.tensor([obs], dtype=torch.float32).to(self.device)
+                prediction = trader(features)
+                action_idx = prediction.max(dim=1)[1].item()
+                obs, reward, done, _ = env.step(action_idx)
+                action = Actions(action_idx)
+                if action == Actions.Buy and position_steps is None:
+                    position_steps = 0
+                elif action == Actions.Sell and position_steps is not None:
+                    stats['order_profits'].append(env.state.profit)
+                    stats['order_profit_rates'].append(env.state.profit_rate)
+                    stats['order_steps'].append(position_steps)
+                    position_steps = None
+                total_reward += reward
+                episode_steps += 1
+                if position_steps is not None:
+                    position_steps += 1
+                if done:
+                    break
+
+            stats['episode_reward'].append(total_reward)
+            stats['episode_steps'].append(episode_steps)
+
+        return {key: np.mean(vals) for key, vals in stats.items()}
 
     def calculate_loss(
             self,

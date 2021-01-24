@@ -44,31 +44,35 @@ class Trader:
     def trade(
             self,
             run_id,
-            intraday=False):
+            intraday=False,
+            decision_maker=None):
+
+        if decision_maker is None:
+            decision_maker = self.decision_maker
 
         result = ''
 
         print(f"Trade limited all stocks from {self.start_date} to {self.end_date} ...")
         message, limit_all_investments, limit_all_gain_loss = \
             self._trade(
-                self.decision_maker,
+                decision_maker,
                 self.all_quotes,
                 self.all_tickers,
                 True,
                 self.stock_exchange.tickers,
                 max_positions=self.max_limit_positions)
-        result += f'\nTrade Portfolio (max {int(len(self.stock_exchange.tickers) / 3)} stocks): {message}'
+        result += f'\nTrade Portfolio (max {self.max_limit_positions} stocks): {message}'
 
         print(f"Trade all stocks from {self.start_date} to {self.end_date} ...")
         message, all_investments, all_gain_loss = \
             self._trade(
-                self.decision_maker,
+                decision_maker,
                 self.all_quotes,
                 self.all_tickers,
                 True,
                 self.stock_exchange.tickers,
                 max_positions=self.max_positions)
-        result += f'\nTrade All ({len(self.stock_exchange.tickers)} stocks): {message}'
+        result += f'\nTrade All ({self.max_positions} stocks): {message}'
 
         print(f"Buy and hold all stocks from {self.start_date} to {self.end_date} ...")
         message = \
