@@ -15,7 +15,6 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 1,
   "links": [],
   "panels": [
     {
@@ -23,7 +22,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "pomalu.ale.jiste.prometheus",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -134,7 +133,7 @@
         "mode": "spectrum"
       },
       "dataFormat": "timeseries",
-      "datasource": null,
+      "datasource": "pomalu.ale.jiste.prometheus",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -192,7 +191,7 @@
       "yBucketSize": null
     },
     {
-      "datasource": null,
+      "datasource": "pomalu.ale.jiste.prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -277,7 +276,7 @@
         "mode": "spectrum"
       },
       "dataFormat": "timeseries",
-      "datasource": null,
+      "datasource": "pomalu.ale.jiste.prometheus",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -339,7 +338,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "pomalu.ale.jiste.prometheus",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -435,7 +434,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "pomalu.ale.jiste.prometheus",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -538,7 +537,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "pomalu.ale.jiste.prometheus",
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -644,12 +643,12 @@
     "list": []
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "pomalu, ale jistĕ ...",
   "uid": "lQzG62-Gz",
-  "version": 18
+  "version": 1
 }
