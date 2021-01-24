@@ -56,7 +56,7 @@ in your favorite command shell
 your favorite browser
 1. Log in to Grafana with the user ```admin``` and the password ```admin```, then
 Grafana will ask for a new password by default.
-1. Navigate to ```pomalu-ale-jiste``` dashboard in folder ```Services```
+1. Navigate to ```pomalu, ale jistĕ ...``` dashboard in folder ```Services```
 
 ## WARNING
 
