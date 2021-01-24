@@ -16,15 +16,13 @@ services:
         container_name: pomalu.ale.jiste.grafana
         image: grafana/grafana:latest
         ports:
-            - "3010:3000"
+            - "3000:3000"
         user: "472"
         volumes:
-            - grafana_data:/var/lib/grafana
+            - "./grafana/dashboards:/var/lib/grafana/dashboards"
+            - "./grafana/provisioning:/etc/grafana/provisioning"
         networks:
             - pomalu.ale.jiste
-
-volumes:
-    grafana_data: {}
 
 networks:
     pomalu.ale.jiste:

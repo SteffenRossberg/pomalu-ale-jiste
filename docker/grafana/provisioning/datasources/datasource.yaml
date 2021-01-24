@@ -1,0 +1,11 @@
+apiVersion: 1
+
+datasources:
+  - name: 'pomalu.ale.jiste.prometheus'
+    type: 'prometheus'
+    access: 'proxy'
+    url: 'http://pomalu.ale.jiste.prometheus:9090'
+    jsonData:
+      timeInterval: '1s'
+    isDefault: True
+

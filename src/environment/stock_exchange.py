@@ -35,6 +35,10 @@ class StockExchange(gym.Env):
         self.seed(seed)
 
     @property
+    def state(self) -> PortfolioState:
+        return self._state
+
+    @property
     def train_level(self) -> TrainingLevels:
         return self._state.train_level
 
