@@ -477,12 +477,6 @@
           "interval": "",
           "legendFormat": "current profit rate",
           "refId": "A"
-        },
-        {
-          "expr": "train_trader_best_value",
-          "interval": "",
-          "legendFormat": "best profit rate",
-          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -639,12 +633,12 @@
     "list": []
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "pomalu, ale jistĕ ...",
   "uid": "lQzG62-Gz",
-  "version": 1
+  "version": 2
 }
