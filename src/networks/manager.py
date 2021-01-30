@@ -1,9 +1,7 @@
 import torch
 import os
 import torch.optim as optim
-from src.networks.encoder import Encoder, Decoder, AutoEncoder
-from src.networks.classifier import Classifier
-from src.networks.decision_maker import DecisionMaker
+from src.networks.models import Trader
 
 
 class NetManager:
@@ -17,41 +15,70 @@ class NetManager:
     def device(self):
         return self.net_device
 
-    def save_net(self, file_name, net, optimizer=None, loss=100.0):
-        file_path = f'{self.data_directory}/{file_name}.pt'
-        data = {
-            'net': net.state_dict(),
-            'loss': loss
-        }
-        if optimizer is not None:
-            data['optimizer'] = optimizer.state_dict()
-        torch.save(data, file_path)
+    def create_trader(self, days, state_size=7):
+        trader = Trader(days, state_size).to(self.device)
+        return trader
 
-    def load_net(self, file_name, net, optimizer=None, default_loss=100.0):
+    def load_trader(self, file_name, trader):
         file_path = f'{self.data_directory}/{file_name}.pt'
-        loss = default_loss
+        if os.path.exists(file_path):
+            state = torch.load(file_path)
+            trader.load_state_dict(state)
+            trader.eval()
+
+    def save_trader(self, file_name, trader):
+        file_path = f'{self.data_directory}/{file_name}.pt'
+        torch.save(trader.state_dict(), file_path)
+
+    @staticmethod
+    def create_buyer_optimizer(trader):
+        return optim.Adam(trader.buyer.parameters()), 100.0
+
+    @staticmethod
+    def create_seller_optimizer(trader):
+        return optim.Adam(trader.seller.parameters()), 100.0
+
+    @staticmethod
+    def create_decision_maker_optimizer(trader):
+        return optim.Adam(trader.decision_maker.parameters(), lr=0.0001), -100.0
+
+    def create_optimizers(self, trader):
+        buyer_optimizer, buyer_loss = self.create_buyer_optimizer(trader)
+        seller_optimizer, seller_loss = self.create_seller_optimizer(trader)
+        decision_maker_optimizer, decision_maker_loss = self.create_decision_maker_optimizer(trader)
+        optimizers = {
+            'buyer': buyer_optimizer,
+            'seller': seller_optimizer,
+            'decision_maker': decision_maker_optimizer
+        }
+        default_results = {
+            'buyer': buyer_loss,
+            'seller': seller_loss,
+            'decision_maker': decision_maker_loss
+        }
+        return optimizers, default_results
+
+    def load_optimizers(self, file_name, optimizers, default_results):
+        file_path = f'{self.data_directory}/{file_name}.optimizers.pt'
+        results = {optimizer_id: default_results[optimizer_id] for optimizer_id in optimizers.keys()}
         if os.path.exists(file_path):
             data = torch.load(file_path)
-            net.load_state_dict(data['net'])
-            net.eval()
-            if optimizer is not None:
-                optimizer.load_state_dict(data['optimizer'])
-            loss = float(data['loss'])
-        return loss
+            for optimizer_id, optimizer in optimizers.items():
+                if optimizer_id in data:
+                    optimizer.load_state_dict(data[optimizer_id]['state'])
+                    results[optimizer_id] = data[optimizer_id]['result']
+        return results
 
-    def create_auto_encoder(self, days):
-        encoder = Encoder(input_shape=(days, 4), output_size=days).to(self.device)
-        decoder = Decoder(input_size=days, output_shape=(days, 4)).to(self.device)
-        auto_encoder = AutoEncoder(encoder, decoder).to(self.device)
-        optimizer = optim.Adam(auto_encoder.parameters())
-        return auto_encoder, optimizer
-
-    def create_classifier(self, buyer, seller):
-        classifier = Classifier(buyer, seller).to(self.device)
-        optimizer = optim.Adam(classifier.parameters())
-        return classifier, optimizer
-
-    def create_decision_maker(self, classifier, state_size=7):
-        agent = DecisionMaker(classifier, state_size=state_size).to(self.device)
-        optimizer = optim.Adam(agent.parameters(), lr=0.0001)
-        return agent, optimizer
+    def save_optimizers(self, file_name, optimizers, results):
+        file_path = f'{self.data_directory}/{file_name}.optimizers.pt'
+        if os.path.exists(file_path):
+            data = torch.load(file_path)
+            for optimizer_id, optimizer in optimizers.items():
+                data[optimizer_id]['state'] = optimizer.state_dict()
+                data[optimizer_id]['result'] = results[optimizer_id]
+        else:
+            data = {
+                optimizer_id: {'state': optimizer.state_dict(), 'result': results[optimizer_id]}
+                for optimizer_id, optimizer in optimizers.items()
+            }
+        torch.save(data, file_path)

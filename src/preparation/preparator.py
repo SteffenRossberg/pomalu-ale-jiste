@@ -1,9 +1,8 @@
 import numpy as np
+import torch
 import pandas as pd
-import time
 import os
 import json
-from src.preparation.msethread import MseThread
 
 
 class DataPreparator:
@@ -48,12 +47,12 @@ class DataPreparator:
             start_date='2000-01-01',
             end_date='2015-12-31',
             tickers=None,
-            intraday=False):
+            intra_day=False):
         quotes_path = f'data/eod/{start_date}/all_quotes.h5'
         tickers_path = f'data/eod/{start_date}/all_tickers.json'
-        if intraday:
-            quotes_path = f'data/intraday/{start_date}/all_quotes.h5'
-            tickers_path = f'data/intraday/{start_date}/all_tickers.json'
+        if intra_day:
+            quotes_path = f'data/intra_day/{start_date}/all_quotes.h5'
+            tickers_path = f'data/intra_day/{start_date}/all_tickers.json'
         if not os.path.exists(quotes_path):
             if tickers is None:
                 tickers = provider.tickers
@@ -61,8 +60,8 @@ class DataPreparator:
             all_tickers = {}
             for ticker, company in tickers.items():
                 print(f'Load {company} ...')
-                if intraday:
-                    quotes = provider.load_intraday(ticker, start_date, end_date)
+                if intra_day:
+                    quotes = provider.load_intra_day(ticker, start_date, end_date)
                 else:
                     quotes = provider.load(ticker, start_date, end_date)
                 if quotes is None:
@@ -94,14 +93,16 @@ class DataPreparator:
         return [changes.tolist() for changes in quotes[columns].pct_change(1).values]
 
     @staticmethod
-    def prepare_samples(provider,
-                        days=5,
-                        start_date='2000-01-01',
-                        end_date='2015-12-31',
-                        sample_threshold=2,
-                        sample_match_threshold=0.003,
-                        buy_sell_match_threshold=0.002,
-                        filter_match_threshold=0.001):
+    def prepare_samples(
+            provider,
+            days=5,
+            start_date='2000-01-01',
+            end_date='2015-12-31',
+            sample_threshold=2,
+            sample_match_threshold=0.003,
+            buy_sell_match_threshold=0.002,
+            filter_match_threshold=0.001,
+            device="cpu"):
         """
         Prepares categorized samples of stock price windows
 
@@ -123,6 +124,8 @@ class DataPreparator:
             upper limit to decide, it is same sample of buy and sell or not, default: 0.002
         filter_match_threshold : float, optional
             upper limit to decide, it is a buy/sell sample and not a none signaled sample, default: 0.001
+        device : str
+            Device to use for calculation, cpu or cuda, default: cpu
 
         Returns
         -------
@@ -152,25 +155,35 @@ class DataPreparator:
                 all_none = none if all_none is None else np.concatenate((all_none, none))
 
             print(f'Total: buys: {np.shape(all_buys)} - sells: {np.shape(all_sells)}')
-            unique_buys, unique_sells = DataPreparator.extract_unique_samples(all_buys,
-                                                                              all_sells,
-                                                                              match_threshold=buy_sell_match_threshold)
+            unique_buys, unique_sells = DataPreparator.extract_unique_samples(
+                device,
+                all_buys,
+                all_sells,
+                match_threshold=buy_sell_match_threshold)
             print(f'Unique: buys: {np.shape(unique_buys)} - sells: {np.shape(unique_sells)}')
-            sample_buys = DataPreparator.find_samples(unique_buys,
-                                                      sample_threshold=sample_threshold,
-                                                      match_threshold=sample_match_threshold)
-            sample_sells = DataPreparator.find_samples(unique_sells,
-                                                       sample_threshold=sample_threshold,
-                                                       match_threshold=sample_match_threshold)
+            sample_buys = DataPreparator.find_samples(
+                device,
+                unique_buys,
+                sample_threshold=sample_threshold,
+                match_threshold=sample_match_threshold)
+            sample_sells = DataPreparator.find_samples(
+                device,
+                unique_sells,
+                sample_threshold=sample_threshold,
+                match_threshold=sample_match_threshold)
             print(f'Samples: buys: {np.shape(sample_buys)} - sells: {np.shape(sample_sells)}')
-            buys, _ = DataPreparator.extract_unique_samples(sample_buys,
-                                                            all_none,
-                                                            match_threshold=filter_match_threshold,
-                                                            extract_both=False)
-            sells, _ = DataPreparator.extract_unique_samples(sample_sells,
-                                                             all_none,
-                                                             match_threshold=filter_match_threshold,
-                                                             extract_both=False)
+            buys, _ = DataPreparator.extract_unique_samples(
+                device,
+                sample_buys,
+                all_none,
+                match_threshold=filter_match_threshold,
+                extract_both=False)
+            sells, _ = DataPreparator.extract_unique_samples(
+                device,
+                sample_sells,
+                all_none,
+                match_threshold=filter_match_threshold,
+                extract_both=False)
             print(f'Unique samples: buys: {np.shape(buys)} - sells: {np.shape(sells)}')
             np.savez_compressed(samples_path, buys=buys, sells=sells, none=all_none)
         samples_file = np.load(samples_path)
@@ -197,20 +210,20 @@ class DataPreparator:
         return mse
 
     @staticmethod
-    def extract_unique_samples(x, y, match_threshold, extract_both=True):
+    def extract_unique_samples(device, x, y, match_threshold, extract_both=True):
         def extract(all_matches, samples, match_index):
             matched_indices = set([match[match_index] for match in all_matches])
             unique_samples = [samples[i] for i in range(len(samples)) if i not in matched_indices]
             return np.array(unique_samples, dtype=np.float32)
 
-        matches = DataPreparator.find_matches_by_mse(x, y, match_threshold)
+        matches = DataPreparator.find_matches_by_mse(x, y, match_threshold, device)
         filtered_x = extract(matches, x, 0)
         filtered_y = None if not extract_both else extract(matches, y, 1)
         return filtered_x, filtered_y
 
     @staticmethod
-    def find_samples(data, sample_threshold, match_threshold):
-        matches = DataPreparator.find_matches_by_mse(data, data, match_threshold)
+    def find_samples(device, data, sample_threshold, match_threshold):
+        matches = DataPreparator.find_matches_by_mse(data, data, match_threshold, device)
         buckets = [[] for _ in range(len(data))]
         for i in range(len(matches)):
             index0 = matches[i][0]
@@ -222,28 +235,31 @@ class DataPreparator:
         result = np.array(all_samples, dtype=np.float32)
         return result
 
+    # noinspection PyUnusedLocal
     @staticmethod
-    def find_matches_by_mse(x, y, mse_match_threshold):
+    def find_matches_by_mse(x, y, mse_match_threshold, device):
         all_indices = None
-        steps = 2000
-        threads = []
-
+        steps = 5000
         for i in range(0, len(x), steps):
+            x_part = None
             x_part = x[i:i + (steps if len(x) - i > steps else len(x) - i)]
             for j in range(0, len(y), steps):
+                y_part = None
+                diff = None
+                square = None
+                mse = None
+                compare = None
+                indices = None
                 y_part = y[j:j + (steps if len(y) - j > steps else len(y) - j)]
-                thread = MseThread(x_part, y_part, i, j, mse_match_threshold)
-                threads.append(thread)
-
-        for thread in threads:
-            while len([t1 for t1 in filter(lambda t2: t2.isAlive(), threads)]) >= 8:
-                time.sleep(0.01)
-            thread.start()
-
-        for thread in threads:
-            thread.join()
-            all_indices = thread.indices if all_indices is None else np.concatenate((all_indices, thread.indices))
-
+                x_part = torch.tensor(x_part).to(device)
+                y_part = torch.transpose(torch.tensor(y_part), 0, 1).to(device)
+                diff = x_part - y_part
+                square = diff * diff
+                mse = torch.mean(square, dim=(2, 3))
+                compare = torch.tensor(mse < mse_match_threshold, dtype=torch.bool, device=device)
+                indices = torch.nonzero(compare) + torch.tensor([i, j]).to(device)
+                indices = indices.detach().cpu().numpy()
+                all_indices = indices if all_indices is None else np.concatenate((all_indices, indices))
         return all_indices
 
     @staticmethod
