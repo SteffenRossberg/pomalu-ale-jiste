@@ -2,7 +2,8 @@ import torch
 import os
 import torch.optim as optim
 from src.networks.models import Trader
-
+import numpy as np
+import random
 
 class NetManager:
 
@@ -15,6 +16,17 @@ class NetManager:
     def device(self):
         return self.net_device
 
+    # noinspection PyMethodMayBeStatic,PyUnresolvedReferences
+    def init_seed(self, seed, deterministic=True):
+        print("Init random seed ...")
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        if deterministic:
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+
     def create_trader(self, days, state_size=7):
         trader = Trader(days, state_size).to(self.device)
         return trader
@@ -25,6 +37,8 @@ class NetManager:
             state = torch.load(file_path)
             trader.load_state_dict(state)
             trader.eval()
+            return True
+        return False
 
     def save_trader(self, file_name, trader):
         file_path = f'{self.data_directory}/{file_name}.pt'

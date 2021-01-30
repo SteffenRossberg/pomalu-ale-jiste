@@ -60,7 +60,6 @@ class Trader(nn.Module):
         square = diff * diff
         square = square.reshape(square.shape[0], 1, square.shape[-2], square.shape[-1])
         mse = torch.mean(square, dim=(2, 3))
-        mse = 1.0 - mse
         return mse
 
     @staticmethod
@@ -150,7 +149,6 @@ class Encoder(nn.Module):
         for i in range(conv_layer_count):
             key = f'layer{i}'
             layers[key] = nn.Conv2d(self.in_channels, self.out_channels, kernel, stride, padding)
-            torch.nn.init.normal_(layers[key].weight, mean=0.0, std=0.01)
             self.shape = ConvolutionHelper.calc_2d_size(self.shape, kernel, stride, padding)
             layers[key + '_pool'] = nn.MaxPool2d(kernel_size=kernel, padding=(1, 0), stride=(1, 1))
             self.shape = ConvolutionHelper.calc_2d_size(self.shape, kernel, padding=(1, 0), stride=(1, 1))
