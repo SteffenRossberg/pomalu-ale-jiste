@@ -26,7 +26,7 @@ validation_end_date = '2015-12-31'
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'
-trader_decision_maker = 'trader.decision.maker'
+trader_name = 'trader'
 trade_intra_day = False
 trader_start_capital = 50_000.0
 trader_order_fee = 1.0
@@ -210,8 +210,8 @@ def train(train_id, train_buyer, train_seller, train_trader):
 
 train(run_id, args.train_buyer, args.train_seller, args.train_trader)
 
-if trader_decision_maker is not None:
-    manager.load_trader(trader_decision_maker, trader)
+if trader_name is not None:
+    manager.load_trader(trader_name, trader)
 
 manager.init_seed(seed, deterministic)
 game.trade(run_id, trade_intra_day)
