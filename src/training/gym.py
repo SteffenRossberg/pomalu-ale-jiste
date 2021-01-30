@@ -26,7 +26,7 @@ class Gym:
         self.RL_EPSILON_STOP = 0.1
         self.RL_EPSILON_STEPS = 1_000_000
         self.RL_REWARD_STEPS = 2
-        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 50
+        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 20
         self.gauges = {}
 
     def get_gauge(self, name, description):
@@ -192,7 +192,7 @@ class Gym:
         evaluation_states = None
         learn_step = 0
         best_mean_val = 0
-        profit_rate_counter = 0
+        profit_rates = []
         while learn_step < self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE:
             step_index += 1
             experience_buffer.populate(1)
@@ -222,23 +222,24 @@ class Gym:
                     learn_step += 1
                 current_value_gauge.set(mean_val)
 
-                means = self.validation_run(validation_stock_exchange, trader, 50)
-                mean_profit_rate = means['order_profit_rates']
-                if results[name] < mean_profit_rate:
-                    print(f"{step_index:6}:{str(train_stock_exchange.train_level)} " +
-                          f"Mean profit rate updated {results[name]:.2f} -> {mean_profit_rate:.2f}")
-                    save(self.manager)
-                    results[name] = mean_profit_rate
-                    best_trader_value_gauge.set(results[name])
-                else:
-                    print(f"{step_index:6}:{str(train_stock_exchange.train_level)} " +
-                          f"Mean profit rate: {mean_profit_rate:.2f}")
-
-                current_trader_value_gauge.set(mean_profit_rate)
-
-                profit_rate_counter = (profit_rate_counter + 1) if mean_profit_rate > 0.0 else 0
-                if profit_rate_counter >= 10:
-                    break
+                if mean_val > 0.0:
+                    means = self.validation_run(validation_stock_exchange, trader, 50)
+                    mean_profit_rate = means['order_profit_rates']
+                    profit_rates.append(mean_profit_rate)
+                    if results[name] < mean_profit_rate:
+                        print(f"{step_index:6}:{str(train_stock_exchange.train_level)} " +
+                              f"Mean profit rate updated {results[name]:.2f} -> {mean_profit_rate:.2f}")
+                        save(self.manager)
+                        results[name] = mean_profit_rate
+                        best_trader_value_gauge.set(results[name])
+                    else:
+                        print(f"{step_index:6}:{str(train_stock_exchange.train_level)} " +
+                              f"Mean profit rate: {mean_profit_rate:.2f}")
+                    if self.is_upper_outlier(mean_profit_rate, profit_rates, 10):
+                        target_net.sync()
+                    current_trader_value_gauge.set(mean_profit_rate)
+                elif step_index % self.RL_TARGET_NET_SYNC == 0:
+                    target_net.sync()
 
             optimizer.zero_grad()
             batch = experience_buffer.sample(self.RL_BATCH_SIZE)
@@ -250,10 +251,40 @@ class Gym:
             loss_v.backward()
             optimizer.step()
 
-            if step_index % self.RL_TARGET_NET_SYNC == 0:
-                target_net.sync()
-
         save(self.manager, 'last')
+
+    def is_upper_outlier(self, mean_profit_rate, profit_rates, count):
+        if len(profit_rates) < count:
+            return False
+        profit_rates = profit_rates[-count:]
+        _, _, upper_threshold = self.calculate_outliers(profit_rates)
+        return upper_threshold <= mean_profit_rate
+
+    def calculate_outliers(self, data):
+        sorted_data = np.sort(data)
+        median = self.calc_median(sorted_data)
+        q1 = self.calc_quartil(sorted_data, 1)
+        q3 = self.calc_quartil(sorted_data, 3)
+        q_range = (q3 - q1) * 1.25
+        lower_threshold = q1 - q_range
+        upper_threshold = q3 + q_range
+        return lower_threshold, median, upper_threshold
+
+    @staticmethod
+    def calc_median(sorted_data):
+        count = len(sorted_data)
+        if count % 2 == 0:
+            mid2 = int(count / 2)
+            mid1 = mid2 - 1
+            return (sorted_data[mid1] + sorted_data[mid2]) / 2
+        mid = count // 2
+        return sorted_data[mid]
+
+    @staticmethod
+    def calc_quartil(sorted_data, position):
+        count = len(sorted_data)
+        index = (count // 4) * position - 1
+        return sorted_data[index]
 
     def validation_run(self, env: StockExchange, trader, episodes=100):
         stats = {

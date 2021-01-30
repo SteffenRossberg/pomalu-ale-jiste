@@ -109,8 +109,7 @@ class PortfolioState:
             self._should_hold = False
         if action == Actions.Buy and self._stock_count == 0 and count > 0:
             if self._train_level & TrainingLevels.Buy == TrainingLevels.Buy:
-                if buy_signal > 0.0:
-                    reward += 2.0
+                reward += self.calculate_reward(price, buy_price)
             self._investment -= self.trading_fees
             self._investment -= count * price
             self._stock_count = count
@@ -121,8 +120,7 @@ class PortfolioState:
             done |= not sell_price > 0.0
         elif action == Actions.Sell and self._stock_count > 0:
             if self._train_level & TrainingLevels.Sell == TrainingLevels.Sell:
-                if sell_signal > 0.0:
-                    reward += 2.0
+                reward += self.calculate_reward(price, sell_price)
             self._investment -= self.trading_fees
             self._investment += self._stock_count * price
             self._profit = (self._stock_count * price) - (self._stock_count * self._buy_price)
@@ -132,14 +130,14 @@ class PortfolioState:
             self._buy_price = 0.0
             self._top_price = price
             done |= self.reset_on_close or not buy_price > 0.0
-        elif action == Actions.SkipOrHold and self._stock_count == 0:
-            if self._train_level & TrainingLevels.Skip == TrainingLevels.Skip:
-                if self._should_hold:
-                    reward -= 1.0
-        elif action == Actions.SkipOrHold and self._stock_count > 0:
-            if self._train_level & TrainingLevels.Hold == TrainingLevels.Hold:
-                if not self._should_hold:
-                    reward -= 1.0
+        # elif action == Actions.SkipOrHold and self._stock_count == 0:
+        #     if self._train_level & TrainingLevels.Skip == TrainingLevels.Skip:
+        #         if self._should_hold:
+        #             reward -= 5.0
+        # elif action == Actions.SkipOrHold and self._stock_count > 0:
+        #     if self._train_level & TrainingLevels.Hold == TrainingLevels.Hold:
+        #         if not self._should_hold:
+        #             reward -= 5.0
         self._offset += 1
         done |= self._offset >= len(self._frame['windows']) - self._days
         return reward, done

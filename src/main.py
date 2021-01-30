@@ -29,6 +29,7 @@ trader_end_date = '2020-12-31'
 trader_name = 'trader'
 trade_intra_day = False
 trader_start_capital = 50_000.0
+trader_max_limit_positions = 35
 trader_order_fee = 1.0
 trader_capital_gains_tax = 25.0
 trader_solidarity_surcharge = 5.5
@@ -119,7 +120,7 @@ game = Game(
     provider,
     trader,
     len(provider.tickers),
-    int(len(provider.tickers) / 3),
+    trader_max_limit_positions,
     all_quotes,
     all_tickers,
     trader_start_date,
