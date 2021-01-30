@@ -85,7 +85,8 @@ buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(
     provider,
     days=sample_days,
     start_date=train_start_date,
-    end_date=train_end_date)
+    end_date=train_end_date,
+    device=device)
 
 print("Prepare quotes ...")
 all_quotes, all_tickers = DataPreparator.prepare_all_quotes(
