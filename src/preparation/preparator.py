@@ -239,7 +239,7 @@ class DataPreparator:
     @staticmethod
     def find_matches_by_mse(x, y, mse_match_threshold, device):
         all_indices = None
-        steps = 7500
+        steps = 5000
         for i in range(0, len(x), steps):
             x_part = None
             x_part = x[i:i + (steps if len(x) - i > steps else len(x) - i)]
