@@ -22,6 +22,7 @@ train_start_date = '2000-01-01'
 train_end_date = '2012-12-31'
 validation_start_date = '2013-01-01'
 validation_end_date = '2015-12-31'
+
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'
@@ -31,8 +32,11 @@ trader_start_capital = 50_000.0
 trader_order_fee = 1.0
 trader_capital_gains_tax = 25.0
 trader_solidarity_surcharge = 5.5
+
 # Use the last 5 days as a time frame for sampling, forecasting and trading
 sample_days = 5
+seed = 1234567890
+deterministic = True
 today = datetime.now()
 # run_id = f"{today:%Y%m%d.%H%M%S}"
 run_id = "current"
@@ -68,17 +72,27 @@ provider = DataProvider(args.apikey)
 
 print("Create agent manager ...")
 manager = NetManager(device, data_directory=f'data/networks/{run_id}')
+manager.init_seed(seed, deterministic)
 
 print("Create gym ...")
 gym = Gym(manager)
 
 print("Create trader ...")
 trader = manager.create_trader(sample_days, state_size=7)
-manager.load_trader('trader', trader)
+is_trained = manager.load_trader('trader', trader)
 
 print("Create optimizers ...")
 optimizers, results = manager.create_optimizers(trader)
 results = manager.load_optimizers('trader', optimizers, results)
+
+if not is_trained:
+    manager.init_seed(seed, deterministic)
+    trader.reset_buyer(device)
+    optimizers['buyer'], results['buyer'] = manager.create_buyer_optimizer(trader)
+    manager.init_seed(seed, deterministic)
+    trader.reset_seller(device)
+    optimizers['seller'], results['seller'] = manager.create_seller_optimizer(trader)
+
 
 print("Prepare samples ...")
 buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(
@@ -125,7 +139,8 @@ def train(train_id, train_buyer, train_seller, train_trader):
 
     Logger.log(train_id, f"Id: {train_id}")
 
-    while train_buyer > 0:
+    if train_buyer > 0:
+        manager.init_seed(seed, deterministic)
         print("Train buyer samples detector ...")
         gym.train_auto_encoder(
             'buyer',
@@ -139,12 +154,9 @@ def train(train_id, train_buyer, train_seller, train_trader):
         manager.load_trader('trader', trader)
         results = manager.load_optimizers('trader', optimizers, results)
         Logger.log(train_id, f"buyer.auto.encoder: {results['buyer']:.7f}")
-        if results['buyer'] <= 0.09:
-            break
-        # trader.reset_buyer(device)
-        optimizers['buyer'], results['buyer'] = manager.create_buyer_optimizer(trader)
 
-    while train_seller > 0:
+    if train_seller > 0:
+        manager.init_seed(seed, deterministic)
         print("Train seller samples detector ...")
         gym.train_auto_encoder(
             'seller',
@@ -158,12 +170,9 @@ def train(train_id, train_buyer, train_seller, train_trader):
         manager.load_trader('trader', trader)
         results = manager.load_optimizers('trader', optimizers, results)
         Logger.log(train_id, f"seller.auto.encoder: {results['seller']:.7f}")
-        if results['seller'] <= 0.09:
-            break
-        # trader.reset_seller(device)
-        optimizers['seller'], results['seller'] = manager.create_seller_optimizer(trader)
 
     if train_trader > 0:
+        manager.init_seed(seed, deterministic)
         print("Prepare stock exchange environment ...")
         training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
         train_stock_exchange = StockExchange.from_provider(
@@ -173,7 +182,7 @@ def train(train_id, train_buyer, train_seller, train_trader):
             train_end_date,
             random_offset_on_reset=False,
             reset_on_close=False,
-            seed=1234567890)
+            seed=seed)
         validation_stock_exchange = StockExchange.from_provider(
             provider,
             sample_days,
@@ -181,7 +190,7 @@ def train(train_id, train_buyer, train_seller, train_trader):
             validation_end_date,
             random_offset_on_reset=True,
             reset_on_close=True,
-            seed=1234567890)
+            seed=seed)
         print(f"Train decision maker {str(training_level)} ...")
         train_stock_exchange.train_level = training_level
         validation_stock_exchange.train_level = training_level
@@ -204,4 +213,5 @@ train(run_id, args.train_buyer, args.train_seller, args.train_trader)
 if trader_decision_maker is not None:
     manager.load_trader(trader_decision_maker, trader)
 
+manager.init_seed(seed, deterministic)
 game.trade(run_id, trade_intra_day)
