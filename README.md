@@ -40,9 +40,8 @@ You can find more details here: [https://api.tiingo.com](https://api.tiingo.com)
 
 ## the visualization of training ...
 
-To visualize the training process, I use [Prometheus](https://prometheus.io/)
-and [Grafana](https://grafana.com/).
- 
+The project provides a dashboard to visualize the training process using containerized services.
+
 ![pomalu-ale-jiste](docs/Train.Progress.png)
 
 ### Prerequisits
@@ -52,10 +51,9 @@ and [Grafana](https://grafana.com/).
 ### Run
 1. Execute ```docker-compose up``` inside of ```pomalu-ale-jiste/docker``` folder 
 in your favorite command shell
-1. Open Grafana by navigating to [http://localhost:3000](http://localhost:3000) in
+1. Open [http://localhost:3000](http://localhost:3000) in
 your favorite browser
-1. Log in to Grafana with the user ```admin``` and the password ```admin```, then
-Grafana will ask for a new password by default.
+1. Log in with the user ``admin`` and the password ``admin``, you will be asked for a new password by default.
 1. Navigate to ```pomalu, ale jistĕ ...``` dashboard in folder ```Services```
 
 ## WARNING
