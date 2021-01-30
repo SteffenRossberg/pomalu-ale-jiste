@@ -26,7 +26,7 @@ class Gym:
         self.RL_EPSILON_STOP = 0.1
         self.RL_EPSILON_STEPS = 1_000_000
         self.RL_REWARD_STEPS = 2
-        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 50
+        self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 20
         self.gauges = {}
 
     def get_gauge(self, name, description):
@@ -192,7 +192,6 @@ class Gym:
         evaluation_states = None
         learn_step = 0
         best_mean_val = 0
-        profit_rate_counter = 0
         while learn_step < self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE:
             step_index += 1
             experience_buffer.populate(1)
@@ -235,10 +234,6 @@ class Gym:
                           f"Mean profit rate: {mean_profit_rate:.2f}")
 
                 current_trader_value_gauge.set(mean_profit_rate)
-
-                profit_rate_counter = (profit_rate_counter + 1) if mean_profit_rate > 0.0 else 0
-                if profit_rate_counter >= 10:
-                    break
 
             optimizer.zero_grad()
             batch = experience_buffer.sample(self.RL_BATCH_SIZE)
