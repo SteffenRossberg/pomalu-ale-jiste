@@ -89,7 +89,7 @@ class Game:
         index_ticker = 'URTH'
         index_title = self.stock_exchange.etf_tickers[index_ticker]
         if intraday:
-            compare_index = self.stock_exchange.load_intraday(index_ticker, self.start_date, self.end_date, True)
+            compare_index = self.stock_exchange.load_intra_day(index_ticker, self.start_date, self.end_date, True)
         else:
             compare_index = self.stock_exchange.load(index_ticker, self.start_date, self.end_date, True)
 
