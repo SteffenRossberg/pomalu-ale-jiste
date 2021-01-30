@@ -9,7 +9,7 @@ class DataProvider:
     def __init__(self, api_key, data_directory='data'):
         self.__base_url = 'https://api.tiingo.com'
         self.__eod_url = f'{self.__base_url}/tiingo/daily/'
-        self.__intraday_url = f'{self.__base_url}/iex/'
+        self.__intra_day_url = f'{self.__base_url}/iex/'
         self.__tickers = {
                 'MMM': '3M Company',
                 'ABBV': 'AbbVie Inc',
@@ -153,7 +153,7 @@ class DataProvider:
         quotes.fillna(method='bfill', inplace=True)
         return quotes
 
-    def load_intraday(self, ticker, start_date, end_date, enable_cached_data=True):
+    def load_intra_day(self, ticker, start_date, end_date, enable_cached_data=True):
         relative_file_path = self.__ensure_cache_file_path(ticker, start_date, True)
         if not os.path.exists(relative_file_path) or not enable_cached_data:
             start = datetime.strptime(start_date, '%Y-%m-%d')
@@ -218,7 +218,7 @@ class DataProvider:
         return raw_json
 
     def __fetch_intraday_data(self, ticker, start_date, end_date):
-        url = f'{self.__intraday_url}{ticker}/prices'
+        url = f'{self.__intra_day_url}{ticker}/prices'
         payload = {'startDate': self.__format_date(start_date),
                    'endDate': self.__format_date(end_date),
                    'columns': 'open,high,low,close',
