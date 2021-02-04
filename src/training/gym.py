@@ -24,7 +24,7 @@ class Gym:
         self.RL_GAMMA = 0.99
         self.RL_EPSILON_START = 1.0
         self.RL_EPSILON_STOP = 0.1
-        self.RL_EPSILON_STEPS = 1_000_000
+        self.RL_EPSILON_STEPS = 100_000
         self.RL_REWARD_STEPS = 2
         self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE = 20
         self.gauges = {}
