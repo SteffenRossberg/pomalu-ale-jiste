@@ -12,6 +12,7 @@ class Trader(nn.Module):
         self.state_size = state_size
         self.buyer = self._create_auto_encoder()
         self.seller = self._create_auto_encoder()
+        self.classifier = self._create_classifier()
         self.decision_maker = self._create_decision_maker()
 
     def forward(self, features):
@@ -19,19 +20,25 @@ class Trader(nn.Module):
         encoder_features = encoder_features.view((features.shape[0], 1, self.days, 4))
         encoder_features = encoder_features.to(features.device)
 
+        # run auto encoders
         buyer_prediction = self.buyer(encoder_features)
         seller_prediction = self.seller(encoder_features)
 
         buyer_mse = self.__calculate_mse(buyer_prediction, encoder_features)
         seller_mse = self.__calculate_mse(seller_prediction, encoder_features)
-        detector_features = self.__merge_mse(buyer_mse, seller_mse)
+        classifier_features = self.__merge_mse(buyer_mse, seller_mse)
+
+        # run classifier
+        classifier_prediction = self.classifier(classifier_features)
 
         state_features = features[:, -self.state_size:]
         state_features = state_features.view((features.shape[0], 1, 1, self.state_size))
         state_features = state_features.to(features.device)
-        decision_features = self.__merge_state(detector_features, state_features)
+        decision_features = self.__merge_state(classifier_prediction, state_features)
 
+        # run decision maker
         decision = self.decision_maker(decision_features)
+
         return decision
 
     def _forward_unimplemented(self, *features: Any) -> None:
@@ -47,11 +54,19 @@ class Trader(nn.Module):
         selector = DecisionMaker(self.state_size)
         return selector
 
+    @staticmethod
+    def _create_classifier():
+        classifier = Classifier()
+        return classifier
+
     def reset_buyer(self, device):
         self.buyer = self._create_auto_encoder().to(device)
 
     def reset_seller(self, device):
         self.seller = self._create_auto_encoder().to(device)
+
+    def reset_classifier(self, device):
+        self.classifier = self._create_classifier().to(device)
 
     @staticmethod
     def __calculate_mse(x, y):
@@ -87,7 +102,7 @@ class DecisionMaker(nn.Module):
     def __init__(self, state_size):
         super(DecisionMaker, self).__init__()
         self.state_size = state_size
-        in_features = 2 + state_size
+        in_features = 3 + state_size
         self.adv = nn.Sequential(
             NetHelper.init_weights(
                 nn.Linear(
@@ -131,6 +146,30 @@ class DecisionMaker(nn.Module):
         observation = val + adv - adv.mean(dim=3, keepdim=True)
         observation = observation.view((features.shape[0], 3))
         return observation
+
+    def _forward_unimplemented(self, *features: Any) -> None:
+        pass
+
+
+class Classifier(nn.Module):
+
+    def __init__(self):
+        super(Classifier, self).__init__()
+        self.classifier = nn.Sequential(
+            NetHelper.init_weights(nn.Linear(2, 256)),
+            nn.Dropout(0.2),
+            nn.LeakyReLU(),
+            NetHelper.init_weights(nn.Linear(256, 256)),
+            nn.Dropout(0.2),
+            nn.LeakyReLU(),
+            NetHelper.init_weights(nn.Linear(256, 3)),
+            nn.Dropout(0.2),
+            nn.Sigmoid()
+        )
+
+    def forward(self, features):
+        prediction = self.classifier(features)
+        return prediction
 
     def _forward_unimplemented(self, *features: Any) -> None:
         pass
