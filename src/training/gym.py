@@ -8,7 +8,7 @@ from prometheus_client import Gauge
 from src.environment.stock_exchange import StockExchange
 from src.environment.enums import Actions
 from src.networks.manager import NetManager
-from src.networks.models import TrainClassifier
+from src.networks.models import TrainClassifier, AutoEncoder
 
 
 class Gym:
@@ -40,17 +40,16 @@ class Gym:
     def train_auto_encoder(
             self,
             name,
-            trader,
-            agent,
-            optimizers,
+            auto_encoder: AutoEncoder,
+            optimizer,
             features,
-            results,
+            result,
             max_steps=100,
             batch_size=5000):
 
-        def save(manager: NetManager):
-            manager.save_trader('trader', trader)
-            manager.save_optimizers('trader', optimizers, results)
+        def save(manager: NetManager, loss):
+            manager.save_net(name, auto_encoder)
+            manager.save_optimizer(name, optimizer, loss)
 
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, f'{name}.auto.encoder', loss, is_saved)
@@ -63,14 +62,13 @@ class Gym:
             f'Current value of {name}_auto_encoder training')
 
         objective = nn.MSELoss()
-        self.train(
-            name,
-            agent,
-            optimizers,
+        return self.train(
+            auto_encoder,
+            optimizer,
             objective,
             features,
             features,
-            results,
+            result,
             max_steps,
             batch_size,
             save,
@@ -82,16 +80,16 @@ class Gym:
             self,
             name,
             trader,
-            optimizers,
+            optimizer,
             features,
             labels,
-            results,
+            result,
             max_steps=20,
             batch_size=5000):
 
-        def save(manager: NetManager):
-            manager.save_trader('trader', trader)
-            manager.save_optimizers('trader', optimizers, results)
+        def save(manager: NetManager, loss):
+            manager.save_net(name, trader.classifier)
+            manager.save_optimizer(name, optimizer, loss)
 
         def output(epoch, step, loss, is_saved):
             Gym.print_step(epoch, step, name, loss, is_saved)
@@ -105,14 +103,13 @@ class Gym:
 
         objective = nn.CrossEntropyLoss()
         agent = TrainClassifier(trader)
-        self.train(
-            name,
+        return self.train(
             agent,
-            optimizers,
+            optimizer,
             objective,
             features,
             labels,
-            results,
+            result,
             max_steps,
             batch_size,
             save,
@@ -122,13 +119,12 @@ class Gym:
 
     def train(
             self,
-            name,
             agent,
-            optimizers,
+            optimizer,
             objective,
             features,
             labels,
-            results,
+            result,
             max_steps,
             batch_size,
             save,
@@ -144,21 +140,21 @@ class Gym:
                     features,
                     labels,
                     agent,
-                    optimizers[name],
+                    optimizer,
                     objective,
                     batch_size)
             agent_loss = float(agent_loss)
-            if agent_loss < results[name]:
-                results[name] = agent_loss
+            if agent_loss < result:
+                result = agent_loss
                 step = 0
-                save(self.manager)
-                output(epoch, step, results[name], True)
-                best_value_gauge.set(results[name])
+                save(self.manager, result)
+                output(epoch, step, result, True)
+                best_value_gauge.set(result)
             elif max_steps > step:
                 output(epoch, step, agent_loss, False)
                 step += 1
             else:
-                return
+                return result
             current_value_gauge.set(agent_loss)
 
     def train_run(
@@ -195,15 +191,14 @@ class Gym:
             self,
             name,
             trader,
-            optimizers,
-            results,
+            optimizer,
+            result,
             train_stock_exchange,
             validation_stock_exchange):
 
-        def save(manager: NetManager, suffix=None):
-            suffix = f'.{suffix}' if suffix is not None else ''
-            manager.save_trader(f'trader{suffix}', trader)
-            manager.save_optimizers(f'trader{suffix}', optimizers, results)
+        def save(manager: NetManager, loss):
+            manager.save_net(name, trader.decision_maker)
+            manager.save_optimizer(name, optimizer, loss)
 
         best_value_gauge = self.get_gauge(
             f'train_{name}_best_value',
@@ -219,7 +214,6 @@ class Gym:
             'train_trader_current_value',
             'Current value of trader training')
 
-        optimizer = optimizers[name]
         criterion = nn.MSELoss()
         target_net = TargetNet(trader)
         selector = EpsilonGreedyActionSelector(self.RL_EPSILON_START)
@@ -269,12 +263,12 @@ class Gym:
                     means = self.validation_run(validation_stock_exchange, trader, 50)
                     mean_profit_rate = means['order_profit_rates']
                     profit_rates.append(mean_profit_rate)
-                    if results[name] < mean_profit_rate:
+                    if result < mean_profit_rate:
                         print(f"{step_index:6}:{str(train_stock_exchange.train_level)} " +
-                              f"Mean profit rate updated {results[name]:.2f} -> {mean_profit_rate:.2f}")
-                        save(self.manager)
-                        results[name] = mean_profit_rate
-                        best_trader_value_gauge.set(results[name])
+                              f"Mean profit rate updated {result:.2f} -> {mean_profit_rate:.2f}")
+                        result = mean_profit_rate
+                        save(self.manager, result)
+                        best_trader_value_gauge.set(result)
                     else:
                         print(f"{step_index:6}:{str(train_stock_exchange.train_level)} " +
                               f"Mean profit rate: {mean_profit_rate:.2f}")
@@ -294,7 +288,7 @@ class Gym:
             loss_v.backward()
             optimizer.step()
 
-        save(self.manager, 'last')
+        return result
 
     def is_upper_outlier(self, mean_profit_rate, profit_rates, count):
         if len(profit_rates) < count:
