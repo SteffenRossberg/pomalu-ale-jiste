@@ -71,6 +71,9 @@ class Trader(nn.Module):
     def reset_classifier(self, device):
         self.classifier = self._create_classifier().to(device)
 
+    def reset_decision_maker(self, device):
+        self.decision_maker = self._create_decision_maker().to(device)
+
     @staticmethod
     def __calculate_mse(x, y):
         diff = x - y
