@@ -10,7 +10,7 @@ class DataPreparator:
 
     @staticmethod
     def prepare_frames(provider, days=5, start_date='2000-01-01', end_date='2015-12-31'):
-        frames_path = f'data/eod/{start_date}/rl_frames.json'
+        frames_path = f'data/eod/{start_date}.{end_date}/rl_frames.json'
         if not os.path.exists(frames_path):
             frames = []
             for ticker, company in provider.tickers.items():
@@ -49,11 +49,11 @@ class DataPreparator:
             end_date='2015-12-31',
             tickers=None,
             intra_day=False):
-        quotes_path = f'data/eod/{start_date}/all_quotes.h5'
-        tickers_path = f'data/eod/{start_date}/all_tickers.json'
+        quotes_path = f'data/eod/{start_date}.{end_date}/all_quotes.h5'
+        tickers_path = f'data/eod/{start_date}.{end_date}/all_tickers.json'
         if intra_day:
-            quotes_path = f'data/intra_day/{start_date}/all_quotes.h5'
-            tickers_path = f'data/intra_day/{start_date}/all_tickers.json'
+            quotes_path = f'data/intra_day/{start_date}.{end_date}/all_quotes.h5'
+            tickers_path = f'data/intra_day/{start_date}.{end_date}/all_tickers.json'
         if not os.path.exists(quotes_path):
             if tickers is None:
                 tickers = provider.tickers
@@ -165,7 +165,7 @@ class DataPreparator:
         all_buys = None
         all_sells = None
         all_none = None
-        samples_path = f'data/eod/{start_date}/samples.npz'
+        samples_path = f'data/eod/{start_date}.{end_date}/samples.npz'
         if not os.path.exists(samples_path):
             for ticker, company in provider.tickers.items():
                 # get data
