@@ -10,12 +10,13 @@ from src.trading.game import Game
 from src.environment.stock_exchange import StockExchange
 from src.environment.enums import TrainingLevels
 from src.utility.logger import Logger
-from prometheus_client import start_http_server
+import prometheus_client
+import numpy as np
 
 if __name__ != "__main__":
     exit(0)
 
-start_http_server(5000, '0.0.0.0')
+prometheus_client.start_http_server(5000, '0.0.0.0')
 
 # Let's train data of 16 years from 01/01/2000 to 12/31/2015
 train_start_date = '2000-01-01'
@@ -26,7 +27,6 @@ validation_end_date = '2015-12-31'
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'
-trader_name = 'trader'
 trade_intra_day = False
 trader_start_capital = 50_000.0
 trader_max_limit_positions = 35
@@ -58,11 +58,16 @@ parser.add_argument("--train_seller",
                     type=int,
                     default=0,
                     help="Train seller detectors (sample auto encoders)")
-parser.add_argument("--train_trader",
+parser.add_argument("--train_classifier",
                     required=False,
                     type=int,
                     default=0,
-                    help="Train trader")
+                    help="Train classifier (sample classifier)")
+parser.add_argument("--train_decision_maker",
+                    required=False,
+                    type=int,
+                    default=0,
+                    help="Train decision maker")
 args = parser.parse_args()
 # use GPU if available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -72,28 +77,49 @@ print("Create data provider ...")
 provider = DataProvider(args.apikey)
 
 print("Create agent manager ...")
-manager = NetManager(device, data_directory=f'data/networks/{run_id}')
-manager.init_seed(seed, deterministic)
+manager = NetManager(device, seed, deterministic, data_directory=f'data/networks/{run_id}')
 
 print("Create gym ...")
 gym = Gym(manager)
 
 print("Create trader ...")
 trader = manager.create_trader(sample_days, state_size=7)
-is_trained = manager.load_trader('trader', trader)
+buyer_optimizer, buyer_result = manager.create_buyer_optimizer(trader)
+seller_optimizer, seller_result = manager.create_seller_optimizer(trader)
+classifier_optimizer, classifier_result = manager.create_classifier_optimizer(trader)
+decision_maker_optimizer, decision_maker_result = manager.create_decision_maker_optimizer(trader)
 
-print("Create optimizers ...")
-optimizers, results = manager.create_optimizers(trader)
-results = manager.load_optimizers('trader', optimizers, results)
+buyer_optimizer, buyer_result = manager.load(
+    'buyer',
+    trader.buyer,
+    buyer_optimizer,
+    trader.reset_buyer,
+    lambda: manager.create_buyer_optimizer(trader),
+    buyer_result)
 
-if not is_trained:
-    manager.init_seed(seed, deterministic)
-    trader.reset_buyer(device)
-    optimizers['buyer'], results['buyer'] = manager.create_buyer_optimizer(trader)
-    manager.init_seed(seed, deterministic)
-    trader.reset_seller(device)
-    optimizers['seller'], results['seller'] = manager.create_seller_optimizer(trader)
+seller_optimizer, seller_result = manager.load(
+    'seller',
+    trader.seller,
+    seller_optimizer,
+    trader.reset_seller,
+    lambda: manager.create_seller_optimizer(trader),
+    seller_result)
 
+classifier_optimizer, classifier_result = manager.load(
+    'classifier',
+    trader.classifier,
+    classifier_optimizer,
+    trader.reset_classifier,
+    lambda: manager.create_classifier_optimizer(trader),
+    classifier_result)
+
+decision_maker_optimizer, decision_maker_result = manager.load(
+    'decision_maker',
+    trader.decision_maker,
+    decision_maker_optimizer,
+    trader.reset_decision_maker,
+    lambda: manager.create_decision_maker_optimizer(trader),
+    decision_maker_result)
 
 print("Prepare samples ...")
 buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(
@@ -102,6 +128,9 @@ buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(
     start_date=train_start_date,
     end_date=train_end_date,
     device=device)
+
+print("Resample ...")
+buy_samples, sell_samples, none_samples = DataPreparator.over_sample(buy_samples, sell_samples, none_samples)
 
 print("Prepare quotes ...")
 all_quotes, all_tickers = DataPreparator.prepare_all_quotes(
@@ -133,47 +162,79 @@ game = Game(
     sample_days)
 
 
-def train(train_id, train_buyer, train_seller, train_trader):
-    global results
+def train(train_id, train_buyer, train_seller, train_classifier, train_decision_maker):
+    global buyer_optimizer, seller_optimizer, classifier_optimizer, decision_maker_optimizer
+    global buyer_result, seller_result, classifier_result, decision_maker_result
 
     os.makedirs(f'data/networks/{train_id}', exist_ok=True)
 
     Logger.log(train_id, f"Id: {train_id}")
 
     if train_buyer > 0:
-        manager.init_seed(seed, deterministic)
         print("Train buyer samples detector ...")
-        gym.train_auto_encoder(
+        buyer_result = gym.train_auto_encoder(
             'buyer',
-            trader,
             trader.buyer,
-            optimizers,
+            buyer_optimizer,
             buy_samples,
-            results,
+            buyer_result,
             max_steps=50)
         print("Reload trader with best training result after training ...")
-        manager.load_trader('trader', trader)
-        results = manager.load_optimizers('trader', optimizers, results)
-        Logger.log(train_id, f"buyer.auto.encoder: {results['buyer']:.7f}")
+        buyer_optimizer, buyer_result = manager.load(
+            'buyer',
+            trader.buyer,
+            buyer_optimizer,
+            trader.reset_buyer,
+            lambda: manager.create_buyer_optimizer(trader),
+            buyer_result)
+        Logger.log(train_id, f"buyer.auto.encoder: {buyer_result:.7f}")
 
     if train_seller > 0:
-        manager.init_seed(seed, deterministic)
         print("Train seller samples detector ...")
-        gym.train_auto_encoder(
+        seller_result = gym.train_auto_encoder(
             'seller',
-            trader,
             trader.seller,
-            optimizers,
+            seller_optimizer,
             sell_samples,
-            results,
+            seller_result,
             max_steps=50)
         print("Reload trader with best training result after training ...")
-        manager.load_trader('trader', trader)
-        results = manager.load_optimizers('trader', optimizers, results)
-        Logger.log(train_id, f"seller.auto.encoder: {results['seller']:.7f}")
+        seller_optimizer, seller_result = manager.load(
+            'seller',
+            trader.seller,
+            seller_optimizer,
+            trader.reset_seller,
+            lambda: manager.create_seller_optimizer(trader),
+            seller_result)
+        Logger.log(train_id, f"seller.auto.encoder: {seller_result:.7f}")
 
-    if train_trader > 0:
-        manager.init_seed(seed, deterministic)
+    if train_classifier > 0:
+        print("Train classifier ...")
+        classifier_features = np.concatenate((buy_samples, sell_samples, none_samples), axis=0)
+        classifier_labels = np.array(
+            [1 for _ in range((len(buy_samples)))] +
+            [2 for _ in range((len(sell_samples)))] +
+            [0 for _ in range((len(none_samples)))],
+            dtype=np.int)
+        classifier_result = gym.train_classifier(
+            'classifier',
+            trader,
+            classifier_optimizer,
+            classifier_features,
+            classifier_labels,
+            classifier_result,
+            max_steps=20)
+        print("Reload trader with best training result after training ...")
+        classifier_optimizer, seller_result = manager.load(
+            'classifier',
+            trader.classifier,
+            classifier_optimizer,
+            trader.reset_classifier,
+            lambda: manager.create_classifier_optimizer(trader),
+            classifier_result)
+        Logger.log(train_id, f"classifier: {classifier_result:.7f}")
+
+    if train_decision_maker > 0:
         print("Prepare stock exchange environment ...")
         training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
         train_stock_exchange = StockExchange.from_provider(
@@ -195,24 +256,26 @@ def train(train_id, train_buyer, train_seller, train_trader):
         print(f"Train decision maker {str(training_level)} ...")
         train_stock_exchange.train_level = training_level
         validation_stock_exchange.train_level = training_level
-        gym.train_trader(
+        decision_maker_result = gym.train_trader(
             'decision_maker',
             trader,
-            optimizers,
-            results,
+            decision_maker_optimizer,
+            decision_maker_result,
             train_stock_exchange,
             validation_stock_exchange)
         print("Reload trader with best training result after training ...")
-        manager.load_trader('trader', trader)
-        results = manager.load_optimizers('trader', optimizers, results)
+        decision_maker_optimizer, decision_maker_result = manager.load(
+            'decision_maker',
+            trader.decision_maker,
+            decision_maker_optimizer,
+            trader.reset_decision_maker,
+            lambda: manager.create_decision_maker_optimizer(trader),
+            decision_maker_result)
+        Logger.log(train_id, f"decision_maker: {decision_maker_result:.7f}")
         Logger.log(train_id, f"Train Level: {str(training_level)}")
-        Logger.log(train_id, f"Trader Best mean value: {results['decision_maker']:.7f}")
+        Logger.log(train_id, f"Trader Best mean value: {decision_maker_result:.7f}")
 
 
-train(run_id, args.train_buyer, args.train_seller, args.train_trader)
+train(run_id, args.train_buyer, args.train_seller, args.train_classifier, args.train_decision_maker)
 
-if trader_name is not None:
-    manager.load_trader(trader_name, trader)
-
-manager.init_seed(seed, deterministic)
 game.trade(run_id, trade_intra_day)
