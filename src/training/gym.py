@@ -8,6 +8,7 @@ from prometheus_client import Gauge
 from src.environment.stock_exchange import StockExchange
 from src.environment.enums import Actions
 from src.networks.manager import NetManager
+from src.networks.models import TrainClassifier
 
 
 class Gym:
@@ -69,6 +70,48 @@ class Gym:
             objective,
             features,
             features,
+            results,
+            max_steps,
+            batch_size,
+            save,
+            output,
+            best_value_gauge,
+            current_value_gauge)
+
+    def train_classifier(
+            self,
+            name,
+            trader,
+            optimizers,
+            features,
+            labels,
+            results,
+            max_steps=20,
+            batch_size=5000):
+
+        def save(manager: NetManager):
+            manager.save_trader('trader', trader)
+            manager.save_optimizers('trader', optimizers, results)
+
+        def output(epoch, step, loss, is_saved):
+            Gym.print_step(epoch, step, name, loss, is_saved)
+
+        best_value_gauge = self.get_gauge(
+            f'train_{name}_best_value',
+            f'Best value of {name} training')
+        current_value_gauge = self.get_gauge(
+            f'train_{name}_current_value',
+            f'Current value of {name} training')
+
+        objective = nn.CrossEntropyLoss()
+        agent = TrainClassifier(trader)
+        self.train(
+            name,
+            agent,
+            optimizers,
+            objective,
+            features,
+            labels,
             results,
             max_steps,
             batch_size,

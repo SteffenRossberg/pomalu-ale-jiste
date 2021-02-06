@@ -231,12 +231,12 @@ class Game:
                 for ticker in tickers.keys():
                     if row[f'{ticker}_close'] > 0.0 and ticker in portfolio:
                         portfolio[ticker]['last_price'] = row[f'{ticker}_close']
-                for ticker in portfolio.keys():
-                    position = portfolio[ticker]
-                    if self.calculate_position_gain_loss(ticker, position, row) >= 5.0:
-                        actions[ticker] = {'index': Actions.Sell}
-                    # elif ticker in actions and actions[ticker]['index'] == Actions.Sell:
-                    #     actions[ticker] = {'index': Actions.SkipOrHold}
+                # for ticker in portfolio.keys():
+                #     position = portfolio[ticker]
+                #     if self.calculate_position_gain_loss(ticker, position, row) >= 5.0:
+                #         actions[ticker] = {'index': Actions.Sell}
+                #     # elif ticker in actions and actions[ticker]['index'] == Actions.Sell:
+                #     #     actions[ticker] = {'index': Actions.SkipOrHold}
                 for ticker, action in actions.items():
                     if ticker not in portfolio or not portfolio[ticker]['count'] > 0:
                         continue

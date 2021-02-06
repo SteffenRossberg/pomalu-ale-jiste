@@ -10,12 +10,13 @@ from src.trading.game import Game
 from src.environment.stock_exchange import StockExchange
 from src.environment.enums import TrainingLevels
 from src.utility.logger import Logger
-from prometheus_client import start_http_server
+import prometheus_client
+import numpy as np
 
 if __name__ != "__main__":
     exit(0)
 
-start_http_server(5000, '0.0.0.0')
+prometheus_client.start_http_server(5000, '0.0.0.0')
 
 # Let's train data of 16 years from 01/01/2000 to 12/31/2015
 train_start_date = '2000-01-01'
@@ -58,6 +59,11 @@ parser.add_argument("--train_seller",
                     type=int,
                     default=0,
                     help="Train seller detectors (sample auto encoders)")
+parser.add_argument("--train_classifier",
+                    required=False,
+                    type=int,
+                    default=0,
+                    help="Train classifier (sample classifier)")
 parser.add_argument("--train_trader",
                     required=False,
                     type=int,
@@ -93,6 +99,9 @@ if not is_trained:
     manager.init_seed(seed, deterministic)
     trader.reset_seller(device)
     optimizers['seller'], results['seller'] = manager.create_seller_optimizer(trader)
+    manager.init_seed(seed, deterministic)
+    trader.reset_classifier(device)
+    optimizers['classifier'], results['classifier'] = manager.create_classifier_optimizer(trader)
 
 
 print("Prepare samples ...")
@@ -102,6 +111,9 @@ buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(
     start_date=train_start_date,
     end_date=train_end_date,
     device=device)
+
+print("Resample ...")
+buy_samples, sell_samples, none_samples = DataPreparator.over_sample(buy_samples, sell_samples, none_samples)
 
 print("Prepare quotes ...")
 all_quotes, all_tickers = DataPreparator.prepare_all_quotes(
@@ -133,7 +145,7 @@ game = Game(
     sample_days)
 
 
-def train(train_id, train_buyer, train_seller, train_trader):
+def train(train_id, train_buyer, train_seller, train_classifier, train_trader):
     global results
 
     os.makedirs(f'data/networks/{train_id}', exist_ok=True)
@@ -167,6 +179,28 @@ def train(train_id, train_buyer, train_seller, train_trader):
             sell_samples,
             results,
             max_steps=50)
+        print("Reload trader with best training result after training ...")
+        manager.load_trader('trader', trader)
+        results = manager.load_optimizers('trader', optimizers, results)
+        Logger.log(train_id, f"seller.auto.encoder: {results['seller']:.7f}")
+
+    if train_classifier > 0:
+        manager.init_seed(seed, deterministic)
+        print("Train classifier ...")
+        classifier_features = np.concatenate((buy_samples, sell_samples, none_samples), axis=0)
+        classifier_labels = np.array(
+            [1 for _ in range((len(buy_samples)))] +
+            [2 for _ in range((len(sell_samples)))] +
+            [0 for _ in range((len(none_samples)))],
+            dtype=np.int)
+        gym.train_classifier(
+            'classifier',
+            trader,
+            optimizers,
+            classifier_features,
+            classifier_labels,
+            results,
+            max_steps=20)
         print("Reload trader with best training result after training ...")
         manager.load_trader('trader', trader)
         results = manager.load_optimizers('trader', optimizers, results)
@@ -209,7 +243,7 @@ def train(train_id, train_buyer, train_seller, train_trader):
         Logger.log(train_id, f"Trader Best mean value: {results['decision_maker']:.7f}")
 
 
-train(run_id, args.train_buyer, args.train_seller, args.train_trader)
+train(run_id, args.train_buyer, args.train_seller, args.train_classifier, args.train_trader)
 
 if trader_name is not None:
     manager.load_trader(trader_name, trader)
