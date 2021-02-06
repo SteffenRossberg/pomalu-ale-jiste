@@ -142,7 +142,7 @@ class DataProvider:
         return dow30_tickers
 
     def load(self, ticker, start_date, end_date, enable_cached_data=True):
-        relative_file_path = self.__ensure_cache_file_path(ticker, start_date)
+        relative_file_path = self.__ensure_cache_file_path(ticker, start_date, end_date, False)
         if not os.path.exists(relative_file_path) or not enable_cached_data:
             quotes = self.__load_from_provider(ticker, start_date, end_date)
             if quotes is None:
@@ -154,7 +154,7 @@ class DataProvider:
         return quotes
 
     def load_intra_day(self, ticker, start_date, end_date, enable_cached_data=True):
-        relative_file_path = self.__ensure_cache_file_path(ticker, start_date, True)
+        relative_file_path = self.__ensure_cache_file_path(ticker, start_date, end_date, True)
         if not os.path.exists(relative_file_path) or not enable_cached_data:
             start = datetime.strptime(start_date, '%Y-%m-%d')
             final_end = datetime.strptime(end_date, '%Y-%m-%d')
@@ -179,10 +179,10 @@ class DataProvider:
         quotes.fillna(method='bfill', inplace=True)
         return quotes
 
-    def __ensure_cache_file_path(self, ticker, start_date, intraday=False):
-        sub_directory = f'eod/{start_date}'
+    def __ensure_cache_file_path(self, ticker, start_date, end_date, intraday):
+        sub_directory = f'eod/{start_date}.{end_date}'
         if intraday:
-            sub_directory = f'intraday/{start_date}'
+            sub_directory = f'intraday/{start_date}.{end_date}'
         relative_directory = f'{self.__data_directory}/{sub_directory}'
         os.makedirs(relative_directory, exist_ok=True)
         relative_file_path = f'{relative_directory}/{ticker}.csv'

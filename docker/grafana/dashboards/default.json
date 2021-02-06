@@ -33,7 +33,7 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 10,
+        "h": 7,
         "w": 11,
         "x": 0,
         "y": 0
@@ -70,6 +70,12 @@
           "interval": "",
           "legendFormat": "buyer current loss",
           "refId": "B"
+        },
+        {
+          "expr": "train_buyer_auto_encoder_best_value",
+          "interval": "",
+          "legendFormat": "buyer best loss",
+          "refId": "A"
         }
       ],
       "thresholds": [],
@@ -257,6 +263,108 @@
       "type": "gauge"
     },
     {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "pomalu.ale.jiste.prometheus",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 11,
+        "x": 0,
+        "y": 7
+      },
+      "hiddenSeries": false,
+      "id": 13,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.3.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "train_seller_auto_encoder_current_value",
+          "interval": "",
+          "legendFormat": "seller current loss",
+          "refId": "B"
+        },
+        {
+          "expr": "train_seller_auto_encoder_best_value",
+          "interval": "",
+          "legendFormat": "seller best loss",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Seller train result",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
       "cards": {
         "cardPadding": null,
         "cardRound": null
@@ -343,13 +451,13 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 10,
+        "h": 8,
         "w": 11,
         "x": 0,
-        "y": 10
+        "y": 14
       },
       "hiddenSeries": false,
-      "id": 13,
+      "id": 14,
       "legend": {
         "avg": false,
         "current": false,
@@ -376,17 +484,23 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "train_seller_auto_encoder_current_value",
+          "expr": "train_classifier_current_value",
           "interval": "",
-          "legendFormat": "seller current loss",
+          "legendFormat": "classifier current loss",
           "refId": "B"
+        },
+        {
+          "expr": "train_classifier_best_value",
+          "interval": "",
+          "legendFormat": "classifier best loss",
+          "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Seller train result",
+      "title": "Classifier train result",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -536,10 +650,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 10,
+        "h": 8,
         "w": 11,
         "x": 0,
-        "y": 20
+        "y": 22
       },
       "hiddenSeries": false,
       "id": 6,
@@ -633,12 +747,12 @@
     "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "pomalu, ale jistĕ ...",
   "uid": "lQzG62-Gz",
-  "version": 2
+  "version": 3
 }
