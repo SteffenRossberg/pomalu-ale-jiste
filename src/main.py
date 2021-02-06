@@ -27,7 +27,6 @@ validation_end_date = '2015-12-31'
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'
-trader_name = 'trader'
 trade_intra_day = False
 trader_start_capital = 50_000.0
 trader_max_limit_positions = 35
