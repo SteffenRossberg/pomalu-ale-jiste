@@ -178,7 +178,7 @@ def train(train_id, train_buyer, train_seller, train_classifier, train_trader):
             optimizers,
             sell_samples,
             results,
-            max_steps=50)
+            max_steps=20)
         print("Reload trader with best training result after training ...")
         manager.load_trader('trader', trader)
         results = manager.load_optimizers('trader', optimizers, results)
