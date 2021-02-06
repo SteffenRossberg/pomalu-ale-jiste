@@ -3,6 +3,7 @@ import torch
 import pandas as pd
 import os
 import json
+from imblearn.over_sampling import SMOTE, ADASYN
 
 
 class DataPreparator:
@@ -91,6 +92,35 @@ class DataPreparator:
     def calculate_changes(quotes):
         columns = ['open', 'high', 'low', 'close']
         return [changes.tolist() for changes in quotes[columns].pct_change(1).values]
+
+    @staticmethod
+    def over_sample(buys, sells, nones):
+        features = np.concatenate((buys, sells, nones), axis=0)
+        labels = np.array([1 for _ in range(len(buys))] +
+                          [2 for _ in range(len(sells))] +
+                          [0 for _ in range(len(nones))], dtype=np.int)
+        all_features = features.reshape(
+            features.shape[0],
+            features.shape[1] * features.shape[2] * features.shape[3])
+        sampled_features, sampled_labels = SMOTE().fit_resample(all_features, labels)
+        sampled_features = sampled_features.reshape(
+            sampled_features.shape[0],
+            features.shape[1],
+            features.shape[2],
+            features.shape[3])
+        sampled_buys = np.array([sampled_features[i]
+                                 for i in range(len(sampled_features))
+                                 if sampled_labels[i] == 1],
+                                dtype=np.float32)
+        sampled_sells = np.array([sampled_features[i]
+                                  for i in range(len(sampled_features))
+                                  if sampled_labels[i] == 2],
+                                 dtype=np.float32)
+        sampled_nones = np.array([sampled_features[i]
+                                  for i in range(len(sampled_features))
+                                  if sampled_labels[i] == 0],
+                                 dtype=np.float32)
+        return sampled_buys, sampled_sells, sampled_nones
 
     @staticmethod
     def prepare_samples(
