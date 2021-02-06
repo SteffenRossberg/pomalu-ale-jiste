@@ -53,21 +53,28 @@ class NetManager:
         return optim.Adam(trader.seller.parameters()), 100.0
 
     @staticmethod
+    def create_classifier_optimizer(trader):
+        return optim.Adam(trader.classifier.parameters()), 100.0
+
+    @staticmethod
     def create_decision_maker_optimizer(trader):
         return optim.Adam(trader.decision_maker.parameters(), lr=0.0001), -100.0
 
     def create_optimizers(self, trader):
         buyer_optimizer, buyer_loss = self.create_buyer_optimizer(trader)
         seller_optimizer, seller_loss = self.create_seller_optimizer(trader)
+        classifier_optimizer, classifier_loss = self.create_classifier_optimizer(trader)
         decision_maker_optimizer, decision_maker_loss = self.create_decision_maker_optimizer(trader)
         optimizers = {
             'buyer': buyer_optimizer,
             'seller': seller_optimizer,
+            'classifier': classifier_optimizer,
             'decision_maker': decision_maker_optimizer
         }
         default_results = {
             'buyer': buyer_loss,
             'seller': seller_loss,
+            'classifier': classifier_loss,
             'decision_maker': decision_maker_loss
         }
         return optimizers, default_results

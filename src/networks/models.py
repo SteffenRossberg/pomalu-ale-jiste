@@ -21,12 +21,7 @@ class Trader(nn.Module):
         encoder_features = encoder_features.to(features.device)
 
         # run auto encoders
-        buyer_prediction = self.buyer(encoder_features)
-        seller_prediction = self.seller(encoder_features)
-
-        buyer_mse = self.__calculate_mse(buyer_prediction, encoder_features)
-        seller_mse = self.__calculate_mse(seller_prediction, encoder_features)
-        classifier_features = self.__merge_mse(buyer_mse, seller_mse)
+        classifier_features = self.forward_encoders(encoder_features)
 
         # run classifier
         classifier_prediction = self.classifier(classifier_features)
@@ -43,6 +38,14 @@ class Trader(nn.Module):
 
     def _forward_unimplemented(self, *features: Any) -> None:
         pass
+
+    def forward_encoders(self, features):
+        buyer_prediction = self.buyer(features)
+        seller_prediction = self.seller(features)
+        buyer_mse = self.__calculate_mse(buyer_prediction, features)
+        seller_mse = self.__calculate_mse(seller_prediction, features)
+        prediction = self.__merge_mse(buyer_mse, seller_mse)
+        return prediction
 
     def _create_auto_encoder(self):
         encoder = Encoder(input_shape=(self.days, 4), output_size=self.days)
@@ -146,6 +149,23 @@ class DecisionMaker(nn.Module):
         observation = val + adv - adv.mean(dim=3, keepdim=True)
         observation = observation.view((features.shape[0], 3))
         return observation
+
+    def _forward_unimplemented(self, *features: Any) -> None:
+        pass
+
+
+class TrainClassifier(nn.Module):
+
+    def __init__(self, trader):
+        super(TrainClassifier, self).__init__()
+        self.trader = trader
+
+    def forward(self, features):
+        # run auto encoders
+        classifier_features = self.trader.forward_encoders(features)
+        # run classifier
+        prediction = self.trader.classifier(classifier_features)
+        return prediction
 
     def _forward_unimplemented(self, *features: Any) -> None:
         pass
