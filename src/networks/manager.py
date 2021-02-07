@@ -49,7 +49,7 @@ class NetManager:
 
     def load(self, name, net, optimizer, reset, create_optimizer, default):
         if self.load_net(name, net):
-            return optimizer, self.load_optimizer(name, optimizer, default)
+            return self.load_optimizer(name, optimizer, default)
         self.init_seed(self.seed, self.deterministic)
         reset(self.net_device)
         optimizer, result = create_optimizer()
@@ -78,7 +78,7 @@ class NetManager:
             data = torch.load(file_path)
             optimizer.load_state_dict(data['state'])
             result = data['result']
-        return result
+        return optimizer, result
 
     def save_optimizer(self, file_name, optimizer, result):
         file_path = f'{self.data_directory}/{file_name}.optimizer.pt'

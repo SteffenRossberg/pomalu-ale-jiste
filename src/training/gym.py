@@ -44,6 +44,7 @@ class Gym:
             optimizer,
             features,
             result,
+            max_epochs=None,
             max_steps=100,
             batch_size=5000):
 
@@ -51,8 +52,8 @@ class Gym:
             manager.save_net(name, auto_encoder)
             manager.save_optimizer(name, optimizer, loss)
 
-        def output(epoch, step, loss, is_saved):
-            Gym.print_step(epoch, step, f'{name}.auto.encoder', loss, is_saved)
+        def output(epoch, step, loss, accuracy, is_saved):
+            Gym.print_step(epoch, step, f'{name}.auto.encoder', loss, accuracy, is_saved)
 
         best_value_gauge = self.get_gauge(
             f'train_{name}_auto_encoder_best_value',
@@ -69,12 +70,14 @@ class Gym:
             features,
             features,
             result,
+            max_epochs,
             max_steps,
             batch_size,
             save,
             output,
             best_value_gauge,
-            current_value_gauge)
+            current_value_gauge,
+            calculate_accuracy=False)
 
     def train_classifier(
             self,
@@ -84,6 +87,7 @@ class Gym:
             features,
             labels,
             result,
+            max_epochs=None,
             max_steps=20,
             batch_size=5000):
 
@@ -91,8 +95,8 @@ class Gym:
             manager.save_net(name, trader.classifier)
             manager.save_optimizer(name, optimizer, loss)
 
-        def output(epoch, step, loss, is_saved):
-            Gym.print_step(epoch, step, name, loss, is_saved)
+        def output(epoch, step, loss, accuracy, is_saved):
+            Gym.print_step(epoch, step, name, loss, accuracy, is_saved)
 
         best_value_gauge = self.get_gauge(
             f'train_{name}_best_value',
@@ -110,12 +114,14 @@ class Gym:
             features,
             labels,
             result,
+            max_epochs,
             max_steps,
             batch_size,
             save,
             output,
             best_value_gauge,
-            current_value_gauge)
+            current_value_gauge,
+            calculate_accuracy=True)
 
     def train(
             self,
@@ -125,66 +131,110 @@ class Gym:
             features,
             labels,
             result,
+            max_epochs,
             max_steps,
             batch_size,
             save,
             output,
             best_value_gauge,
-            current_value_gauge):
+            current_value_gauge,
+            calculate_accuracy=False):
         step = 0
         epoch = 0
+        train_features, train_labels, val_features, val_labels = self.split_train_and_val(features, labels, 0.75)
+        val_count = val_labels.shape[0]
+        best_accuracy = 0.0
         while True:
             epoch += 1
-            agent_loss = \
+            agent_loss, hits = \
                 self.train_run(
-                    features,
-                    labels,
+                    train_features,
+                    train_labels,
+                    val_features,
+                    val_labels,
                     agent,
                     optimizer,
                     objective,
-                    batch_size)
+                    batch_size,
+                    calculate_accuracy)
             agent_loss = float(agent_loss)
-            if agent_loss < result:
+            accuracy = hits / val_count * 100.0
+            if ((not calculate_accuracy and agent_loss < result) or
+                    (calculate_accuracy and best_accuracy < accuracy)):
                 result = agent_loss
+                best_accuracy = accuracy
                 step = 0
                 save(self.manager, result)
-                output(epoch, step, result, True)
+                output(epoch, step, result, best_accuracy, True)
                 best_value_gauge.set(result)
             elif max_steps > step:
-                output(epoch, step, agent_loss, False)
+                output(epoch, step, agent_loss, accuracy, False)
                 step += 1
             else:
                 return result
             current_value_gauge.set(agent_loss)
+            if max_epochs is not None and epoch >= max_epochs:
+                return result
+
+    @staticmethod
+    def split_train_and_val(features, labels, rate=0.75):
+        features = torch.tensor(features)
+        labels = torch.tensor(labels)
+        train_count = int(features.shape[0] * rate)
+        train_features = features[:train_count]
+        train_labels = labels[:train_count]
+        val_features = features[train_count:]
+        val_labels = labels[train_count:]
+        return train_features, train_labels, val_features, val_labels
 
     def train_run(
             self,
-            features,
-            labels,
+            train_features,
+            train_labels,
+            val_features,
+            val_labels,
             agent,
             agent_optimizer,
             objective,
-            batch_size):
-        random = torch.randperm(len(features))
-        features = torch.tensor(features)[random]
-        labels = torch.tensor(labels)[random]
-        losses = []
+            batch_size,
+            calculate_accuracy):
+
+        # train net
+        random = torch.randperm(len(train_features))
+        features = torch.tensor(train_features)[random]
+        labels = torch.tensor(train_labels)[random]
         for start in range(0, len(features), batch_size):
             stop = start + (batch_size if len(features) - start > batch_size else len(features) - start)
             batch_features = features[start:stop].to(self.device)
             batch_labels = labels[start:stop].to(self.device)
-            # train net
             agent_optimizer.zero_grad()
             prediction = agent(batch_features)
             agent_loss = objective(prediction, batch_labels)
             agent_loss.backward()
             agent_optimizer.step()
+
+        # validate net
+        random = torch.randperm(len(val_features))
+        features = torch.tensor(val_features)[random]
+        labels = torch.tensor(val_labels)[random]
+        losses = []
+        hits = 0
+        for start in range(0, len(features), batch_size):
+            stop = start + (batch_size if len(features) - start > batch_size else len(features) - start)
+            batch_features = features[start:stop].to(self.device)
+            batch_labels = labels[start:stop].to(self.device)
+            prediction = agent(batch_features)
+            agent_loss = objective(prediction, batch_labels)
             losses.append(agent_loss.item())
-        return np.mean(np.array(losses))
+            if calculate_accuracy:
+                actual = prediction.max(dim=-1)[1].cpu().detach().numpy()
+                expected = batch_labels.cpu().detach().numpy()
+                hits += np.sum([1 if actual[i] == expected[i] else 0 for i in range(len(actual))])
+        return np.mean(np.array(losses)), hits
 
     @staticmethod
-    def print_step(epoch, step, name, loss, is_saved):
-        message = f"{epoch:4} - {step:4} - {name}: {loss:.7f}{' ... saved' if is_saved else ''}"
+    def print_step(epoch, step, name, loss, accuracy, is_saved):
+        message = f"{epoch:4} - {step:4} - {name}: {loss:.7f}: {accuracy:.3f}% {' ... saved' if is_saved else ''}"
         print(message)
 
     def train_trader(
