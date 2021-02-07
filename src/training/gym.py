@@ -44,6 +44,7 @@ class Gym:
             optimizer,
             features,
             result,
+            max_epochs=None,
             max_steps=100,
             batch_size=5000):
 
@@ -69,6 +70,7 @@ class Gym:
             features,
             features,
             result,
+            max_epochs,
             max_steps,
             batch_size,
             save,
@@ -84,6 +86,7 @@ class Gym:
             features,
             labels,
             result,
+            max_epochs=None,
             max_steps=20,
             batch_size=5000):
 
@@ -110,6 +113,7 @@ class Gym:
             features,
             labels,
             result,
+            max_epochs,
             max_steps,
             batch_size,
             save,
@@ -125,6 +129,7 @@ class Gym:
             features,
             labels,
             result,
+            max_epochs,
             max_steps,
             batch_size,
             save,
@@ -156,6 +161,8 @@ class Gym:
             else:
                 return result
             current_value_gauge.set(agent_loss)
+            if max_epochs is not None and epoch >= max_epochs:
+                return result
 
     def train_run(
             self,

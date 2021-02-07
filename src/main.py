@@ -178,7 +178,8 @@ def train(train_id, train_buyer, train_seller, train_classifier, train_decision_
             buyer_optimizer,
             buy_samples,
             buyer_result,
-            max_steps=50)
+            max_epochs=100,
+            max_steps=10)
         print("Reload trader with best training result after training ...")
         buyer_optimizer, buyer_result = manager.load(
             'buyer',
@@ -197,7 +198,8 @@ def train(train_id, train_buyer, train_seller, train_classifier, train_decision_
             seller_optimizer,
             sell_samples,
             seller_result,
-            max_steps=50)
+            max_epochs=100,
+            max_steps=10)
         print("Reload trader with best training result after training ...")
         seller_optimizer, seller_result = manager.load(
             'seller',
@@ -223,7 +225,8 @@ def train(train_id, train_buyer, train_seller, train_classifier, train_decision_
             classifier_features,
             classifier_labels,
             classifier_result,
-            max_steps=20)
+            max_epochs=100,
+            max_steps=10)
         print("Reload trader with best training result after training ...")
         classifier_optimizer, seller_result = manager.load(
             'classifier',
