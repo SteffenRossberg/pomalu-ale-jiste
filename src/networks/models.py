@@ -26,14 +26,16 @@ class Trader(nn.Module):
         # run classifier
         classifier_prediction = self.classifier(classifier_features)
 
-        state_features = features[:, -self.state_size:]
-        state_features = state_features.view((features.shape[0], 1, 1, self.state_size))
-        state_features = state_features.to(features.device)
-        decision_features = self.__merge_state(classifier_prediction, state_features)
+        # state_features = features[:, -self.state_size:]
+        # state_features = state_features.view((features.shape[0], 1, 1, self.state_size))
+        # state_features = state_features.to(features.device)
+        # decision_features = self.__merge_state(classifier_prediction, state_features)
 
-        # run decision maker
-        decision = self.decision_maker(decision_features)
+        # # run decision maker
+        # decision = self.decision_maker(decision_features)
+        # return decision
 
+        decision = classifier_prediction.view((classifier_prediction.shape[0], 3))
         return decision
 
     def _forward_unimplemented(self, *features: Any) -> None:
