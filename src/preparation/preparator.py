@@ -9,11 +9,18 @@ from imblearn.over_sampling import SMOTE, ADASYN
 class DataPreparator:
 
     @staticmethod
-    def prepare_frames(provider, days=5, start_date='2000-01-01', end_date='2015-12-31'):
+    def prepare_frames(
+            provider,
+            days=5,
+            start_date='2000-01-01',
+            end_date='2015-12-31',
+            tickers=None):
         frames_path = f'data/eod/{start_date}.{end_date}/rl_frames.json'
         if not os.path.exists(frames_path):
             frames = []
-            for ticker, company in provider.tickers.items():
+            tickers = tickers if tickers is not None else provider.tickers.keys()
+            for ticker in tickers:
+                company = provider.tickers[ticker]
                 print(f'Loading {ticker:5} - {company} ...')
                 quotes = provider.load(ticker, start_date, end_date)
                 if quotes is None:
@@ -55,11 +62,11 @@ class DataPreparator:
             quotes_path = f'data/intra_day/{start_date}.{end_date}/all_quotes.h5'
             tickers_path = f'data/intra_day/{start_date}.{end_date}/all_tickers.json'
         if not os.path.exists(quotes_path):
-            if tickers is None:
-                tickers = provider.tickers
             all_quotes = None
             all_tickers = {}
-            for ticker, company in tickers.items():
+            tickers = tickers if tickers is not None else provider.tickers.keys()
+            for ticker in tickers:
+                company = provider.tickers[ticker]
                 print(f'Load {company} ...')
                 if intra_day:
                     quotes = provider.load_intra_day(ticker, start_date, end_date)
@@ -132,6 +139,7 @@ class DataPreparator:
             sample_match_threshold=0.003,
             buy_sell_match_threshold=0.002,
             filter_match_threshold=0.001,
+            tickers=None,
             device="cpu"):
         """
         Prepares categorized samples of stock price windows
@@ -154,6 +162,8 @@ class DataPreparator:
             upper limit to decide, it is same sample of buy and sell or not, default: 0.002
         filter_match_threshold : float, optional
             upper limit to decide, it is a buy/sell sample and not a none signaled sample, default: 0.001
+        tickers : array, optional
+            tickers to sample, default: None
         device : str
             Device to use for calculation, cpu or cuda, default: cpu
 
@@ -167,7 +177,9 @@ class DataPreparator:
         all_none = None
         samples_path = f'data/eod/{start_date}.{end_date}/samples.npz'
         if not os.path.exists(samples_path):
-            for ticker, company in provider.tickers.items():
+            tickers = tickers if tickers is not None else provider.tickers.keys()
+            for ticker in tickers:
+                company = provider.tickers[ticker]
                 # get data
                 quotes = provider.load(ticker, start_date, end_date)
                 if quotes is None:
