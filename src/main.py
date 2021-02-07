@@ -23,6 +23,7 @@ train_start_date = '2000-01-01'
 train_end_date = '2012-12-31'
 validation_start_date = '2013-01-01'
 validation_end_date = '2015-12-31'
+train_tickers = None
 
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
@@ -33,6 +34,7 @@ trader_max_limit_positions = 35
 trader_order_fee = 1.0
 trader_capital_gains_tax = 25.0
 trader_solidarity_surcharge = 5.5
+trade_tickers = None
 
 # Use the last 5 days as a time frame for sampling, forecasting and trading
 sample_days = 5
@@ -127,6 +129,7 @@ buy_samples, sell_samples, none_samples = DataPreparator.prepare_samples(
     days=sample_days,
     start_date=train_start_date,
     end_date=train_end_date,
+    tickers=train_tickers,
     device=device)
 
 print("Resample ...")
@@ -138,7 +141,7 @@ all_quotes, all_tickers = DataPreparator.prepare_all_quotes(
     sample_days,
     trader_start_date,
     trader_end_date,
-    provider.tickers,
+    trade_tickers,
     trade_intra_day)
 
 print("Prepare frames ...")
@@ -148,7 +151,7 @@ print("Create game ...")
 game = Game(
     provider,
     trader,
-    len(provider.tickers),
+    len(trade_tickers if trade_tickers is not None else provider.tickers.keys()),
     trader_max_limit_positions,
     all_quotes,
     all_tickers,
@@ -171,71 +174,92 @@ def train(train_id, train_buyer, train_seller, train_classifier, train_decision_
     Logger.log(train_id, f"Id: {train_id}")
 
     if train_buyer > 0:
-        print("Train buyer samples detector ...")
-        buyer_result = gym.train_auto_encoder(
-            'buyer',
-            trader.buyer,
-            buyer_optimizer,
-            buy_samples,
-            buyer_result,
-            max_epochs=100,
-            max_steps=10)
-        print("Reload trader with best training result after training ...")
-        buyer_optimizer, buyer_result = manager.load(
-            'buyer',
-            trader.buyer,
-            buyer_optimizer,
-            trader.reset_buyer,
-            lambda: manager.create_buyer_optimizer(trader),
-            buyer_result)
-        Logger.log(train_id, f"buyer.auto.encoder: {buyer_result:.7f}")
+        buyer_features = []
+        for i in range(len(sell_samples)):
+            buyer_features.append(sell_samples[i])
+            buyer_features.append(none_samples[i])
+        buyer_features = np.array(buyer_features, dtype=np.float32)
+        for _ in range(2):
+            manager.init_seed(seed, deterministic)
+            print("Train buyer samples detector ...")
+            buyer_result = gym.train_auto_encoder(
+                'buyer',
+                trader.buyer,
+                buyer_optimizer,
+                buyer_features,
+                buyer_result,
+                max_epochs=100,
+                max_steps=10)
+            print("Reload trader with best training result after training ...")
+            buyer_optimizer, buyer_result = manager.load(
+                'buyer',
+                trader.buyer,
+                buyer_optimizer,
+                trader.reset_buyer,
+                lambda: manager.create_buyer_optimizer(trader),
+                buyer_result)
+            Logger.log(train_id, f"buyer.auto.encoder: {buyer_result:.7f}")
 
     if train_seller > 0:
-        print("Train seller samples detector ...")
-        seller_result = gym.train_auto_encoder(
-            'seller',
-            trader.seller,
-            seller_optimizer,
-            sell_samples,
-            seller_result,
-            max_epochs=100,
-            max_steps=10)
-        print("Reload trader with best training result after training ...")
-        seller_optimizer, seller_result = manager.load(
-            'seller',
-            trader.seller,
-            seller_optimizer,
-            trader.reset_seller,
-            lambda: manager.create_seller_optimizer(trader),
-            seller_result)
-        Logger.log(train_id, f"seller.auto.encoder: {seller_result:.7f}")
+        seller_features = []
+        for i in range(len(buy_samples)):
+            seller_features.append(buy_samples[i])
+            seller_features.append(none_samples[i])
+        seller_features = np.array(seller_features, dtype=np.float32)
+        for _ in range(2):
+            manager.init_seed(seed, deterministic)
+            print("Train seller samples detector ...")
+            seller_result = gym.train_auto_encoder(
+                'seller',
+                trader.seller,
+                seller_optimizer,
+                seller_features,
+                seller_result,
+                max_epochs=100,
+                max_steps=10)
+            print("Reload trader with best training result after training ...")
+            seller_optimizer, seller_result = manager.load(
+                'seller',
+                trader.seller,
+                seller_optimizer,
+                trader.reset_seller,
+                lambda: manager.create_seller_optimizer(trader),
+                seller_result)
+            Logger.log(train_id, f"seller.auto.encoder: {seller_result:.7f}")
 
     if train_classifier > 0:
-        print("Train classifier ...")
-        classifier_features = np.concatenate((buy_samples, sell_samples, none_samples), axis=0)
-        classifier_labels = np.array(
-            [1 for _ in range((len(buy_samples)))] +
-            [2 for _ in range((len(sell_samples)))] +
-            [0 for _ in range((len(none_samples)))],
-            dtype=np.int)
-        classifier_result = gym.train_classifier(
-            'classifier',
-            trader,
-            classifier_optimizer,
-            classifier_features,
-            classifier_labels,
-            classifier_result,
-            max_epochs=100,
-            max_steps=10)
-        print("Reload trader with best training result after training ...")
-        classifier_optimizer, seller_result = manager.load(
-            'classifier',
-            trader.classifier,
-            classifier_optimizer,
-            trader.reset_classifier,
-            lambda: manager.create_classifier_optimizer(trader),
-            classifier_result)
-        Logger.log(train_id, f"classifier: {classifier_result:.7f}")
+        classifier_features = []
+        classifier_labels = []
+        for i in range(len(buy_samples)):
+            classifier_features.append(buy_samples[i])
+            classifier_features.append(sell_samples[i])
+            classifier_features.append(none_samples[i])
+            classifier_labels.append(1)
+            classifier_labels.append(2)
+            classifier_labels.append(0)
+        classifier_features = np.array(classifier_features, dtype=np.float32)
+        classifier_labels = np.array(classifier_labels, dtype=np.int)
+        for _ in range(2):
+            manager.init_seed(seed, deterministic)
+            print("Train classifier ...")
+            classifier_result = gym.train_classifier(
+                'classifier',
+                trader,
+                classifier_optimizer,
+                classifier_features,
+                classifier_labels,
+                classifier_result,
+                max_epochs=100,
+                max_steps=10)
+            print("Reload trader with best training result after training ...")
+            classifier_optimizer, seller_result = manager.load(
+                'classifier',
+                trader.classifier,
+                classifier_optimizer,
+                trader.reset_classifier,
+                lambda: manager.create_classifier_optimizer(trader),
+                classifier_result)
+            Logger.log(train_id, f"classifier: {classifier_result:.7f}")
 
     if train_decision_maker > 0:
         print("Prepare stock exchange environment ...")
