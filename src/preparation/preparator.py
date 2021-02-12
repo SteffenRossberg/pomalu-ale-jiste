@@ -3,7 +3,7 @@ import torch
 import pandas as pd
 import os
 import json
-from imblearn.over_sampling import SMOTE  # , ADASYN
+from imblearn.over_sampling import SMOTE
 
 
 class DataPreparator:
@@ -109,7 +109,7 @@ class DataPreparator:
             buy_sell_match_threshold=0.002,
             filter_match_threshold=0.001,
             tickers=None,
-            device="cpu"):
+            device='cpu'):
         """
         Prepares categorized samples of stock price windows
 
