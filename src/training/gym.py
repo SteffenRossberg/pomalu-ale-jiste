@@ -309,8 +309,8 @@ class Gym:
                     learn_step += 1
                 current_value_gauge.set(mean_val)
 
-                if mean_val > 0.0:
-                    means = self.validation_run(validation_stock_exchange, trader, 50)
+                if mean_val > 0:
+                    means = self.validation_run(validation_stock_exchange, trader, 20)
                     mean_profit_rate = means['order_profit_rates']
                     profit_rates.append(mean_profit_rate)
                     if result < mean_profit_rate:
