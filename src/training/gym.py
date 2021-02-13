@@ -55,15 +55,20 @@ class Gym:
         def output(epoch, step, loss, accuracy, is_saved):
             Gym.print_step(epoch, step, f'{name}.auto.encoder', loss, accuracy, is_saved)
 
-        best_value_gauge = self.get_gauge(
-            f'train_{name}_auto_encoder_best_value',
-            f'Best value of {name}_auto_encoder training')
-        current_value_gauge = self.get_gauge(
-            f'train_{name}_auto_encoder_current_value',
-            f'Current value of {name}_auto_encoder training')
+        def calculate_accuracies(x, y):
+            x = x + 0.0000000001
+            ratio = y / x
+            ratio = ratio - 1.0
+            ratio = np.abs(ratio)
+            mean_ratio = np.mean(ratio, axis=(2, 3))
+            mean_ratio = 1.0 - mean_ratio
+            accuracies = np.where((mean_ratio < 0.0) | (mean_ratio > 1.0), 0.0, mean_ratio)
+            accuracies = accuracies.flatten()
+            return accuracies
 
         objective = nn.MSELoss()
         return self.train(
+            name,
             auto_encoder,
             optimizer,
             objective,
@@ -75,9 +80,7 @@ class Gym:
             batch_size,
             save,
             output,
-            best_value_gauge,
-            current_value_gauge,
-            calculate_accuracy=False)
+            calculate_accuracies=calculate_accuracies)
 
     def train_classifier(
             self,
@@ -98,16 +101,14 @@ class Gym:
         def output(epoch, step, loss, accuracy, is_saved):
             Gym.print_step(epoch, step, name, loss, accuracy, is_saved)
 
-        best_value_gauge = self.get_gauge(
-            f'train_{name}_best_value',
-            f'Best value of {name} training')
-        current_value_gauge = self.get_gauge(
-            f'train_{name}_current_value',
-            f'Current value of {name} training')
+        def calculate_accuracies(actual, expected):
+            actual = np.argmax(actual, axis=-1)
+            return np.array([1 if actual[i] == expected[i] else 0 for i in range(len(actual))])
 
         objective = nn.CrossEntropyLoss()
         agent = TrainClassifier(trader)
         return self.train(
+            name,
             agent,
             optimizer,
             objective,
@@ -119,12 +120,11 @@ class Gym:
             batch_size,
             save,
             output,
-            best_value_gauge,
-            current_value_gauge,
-            calculate_accuracy=True)
+            calculate_accuracies=calculate_accuracies)
 
     def train(
             self,
+            name,
             agent,
             optimizer,
             objective,
@@ -136,17 +136,28 @@ class Gym:
             batch_size,
             save,
             output,
-            best_value_gauge,
-            current_value_gauge,
-            calculate_accuracy=False):
+            calculate_accuracies=None):
+
+        best_loss_gauge = self.get_gauge(
+            f'train_{name}_best_loss',
+            f'Best value of {name} training')
+        current_loss_gauge = self.get_gauge(
+            f'train_{name}_current_loss',
+            f'Current value of {name} training')
+        best_accuracy_gauge = self.get_gauge(
+            f'train_{name}_best_accuracy',
+            f'Best accuracy of {name} training')
+        current_accuracy_gauge = self.get_gauge(
+            f'train_{name}_current_accuracy',
+            f'Current accuracy of {name} training')
+
         step = 0
         epoch = 0
         train_features, train_labels, val_features, val_labels = self.split_train_and_val(features, labels, 0.75)
-        val_count = val_labels.shape[0]
         best_accuracy = 0.0
         while True:
             epoch += 1
-            agent_loss, hits = \
+            loss, accuracy = \
                 self.train_run(
                     train_features,
                     train_labels,
@@ -156,23 +167,26 @@ class Gym:
                     optimizer,
                     objective,
                     batch_size,
-                    calculate_accuracy)
-            agent_loss = float(agent_loss)
-            accuracy = hits / val_count * 100.0
-            if ((not calculate_accuracy and agent_loss < result) or
-                    (calculate_accuracy and best_accuracy < accuracy)):
-                result = agent_loss
-                best_accuracy = accuracy
-                step = 0
+                    calculate_accuracies)
+            loss = float(loss)
+            is_saved = False
+            if best_accuracy < accuracy:
                 save(self.manager, result)
-                output(epoch, step, result, best_accuracy, True)
-                best_value_gauge.set(result)
+                is_saved = True
+                best_accuracy = accuracy
+                best_accuracy_gauge.set(accuracy)
+                step = 0
+            if loss < result:
+                result = loss
+                best_loss_gauge.set(loss)
+                step = 0
             elif max_steps > step:
-                output(epoch, step, agent_loss, accuracy, False)
                 step += 1
             else:
                 return result
-            current_value_gauge.set(agent_loss)
+            output(epoch, step, loss, accuracy, is_saved)
+            current_loss_gauge.set(loss)
+            current_accuracy_gauge.set(accuracy)
             if max_epochs is not None and epoch >= max_epochs:
                 return result
 
@@ -197,12 +211,17 @@ class Gym:
             agent_optimizer,
             objective,
             batch_size,
-            calculate_accuracy):
+            calculate_accuracies):
+
+        # noinspection PyUnusedLocal
+        def dummy_accuracy(current, exp):
+            return 0.0
 
         # train net
         random = torch.randperm(len(train_features))
         features = torch.tensor(train_features)[random]
         labels = torch.tensor(train_labels)[random]
+        agent.train()
         for start in range(0, len(features), batch_size):
             stop = start + (batch_size if len(features) - start > batch_size else len(features) - start)
             batch_features = features[start:stop].to(self.device)
@@ -212,13 +231,15 @@ class Gym:
             agent_loss = objective(prediction, batch_labels)
             agent_loss.backward()
             agent_optimizer.step()
-
         # validate net
         random = torch.randperm(len(val_features))
         features = torch.tensor(val_features)[random]
         labels = torch.tensor(val_labels)[random]
         losses = []
-        hits = 0
+        accuracies = []
+        if calculate_accuracies is None:
+            calculate_accuracies = dummy_accuracy
+        agent.eval()
         for start in range(0, len(features), batch_size):
             stop = start + (batch_size if len(features) - start > batch_size else len(features) - start)
             batch_features = features[start:stop].to(self.device)
@@ -226,11 +247,10 @@ class Gym:
             prediction = agent(batch_features)
             agent_loss = objective(prediction, batch_labels)
             losses.append(agent_loss.item())
-            if calculate_accuracy:
-                actual = prediction.max(dim=-1)[1].cpu().detach().numpy()
-                expected = batch_labels.cpu().detach().numpy()
-                hits += np.sum([1 if actual[i] == expected[i] else 0 for i in range(len(actual))])
-        return np.mean(np.array(losses)), hits
+            actual = prediction.cpu().detach().numpy()
+            expected = batch_labels.cpu().detach().numpy()
+            accuracies = np.concatenate((accuracies, calculate_accuracies(actual, expected)), axis=0)
+        return np.mean(losses), np.mean(accuracies) * 100.0
 
     @staticmethod
     def print_step(epoch, step, name, loss, accuracy, is_saved):
@@ -280,6 +300,7 @@ class Gym:
         learn_step = 0
         best_mean_val = 0
         profit_rates = []
+        trader.train(mode=True)
         while learn_step < self.RL_MAX_LEARN_STEPS_WITHOUT_CHANGE:
             step_index += 1
             experience_buffer.populate(1)
@@ -374,6 +395,7 @@ class Gym:
         return sorted_data[index]
 
     def validation_run(self, env: StockExchange, trader, episodes=100):
+        trader.eval()
         stats = {
             'episode_reward': [],
             'episode_steps': [],
@@ -381,7 +403,6 @@ class Gym:
             'order_profit_rates': [],
             'order_steps': [],
         }
-
         for episode in range(episodes):
             obs = env.reset()
 
@@ -411,7 +432,7 @@ class Gym:
 
             stats['episode_reward'].append(total_reward)
             stats['episode_steps'].append(episode_steps)
-
+        trader.train()
         return {key: np.mean(vals) for key, vals in stats.items()}
 
     def calculate_loss(
