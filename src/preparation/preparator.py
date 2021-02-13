@@ -211,7 +211,7 @@ class DataPreparator:
         return [changes.tolist() for changes in quotes[columns].pct_change(1).values]
 
     @staticmethod
-    def over_sample(buys, sells, nones):
+    def over_sample(buys, sells, nones, seed):
         features = np.concatenate((buys, sells, nones), axis=0)
         labels = np.array([1 for _ in range(len(buys))] +
                           [2 for _ in range(len(sells))] +
@@ -219,7 +219,7 @@ class DataPreparator:
         all_features = features.reshape(
             features.shape[0],
             features.shape[1] * features.shape[2] * features.shape[3])
-        sampled_features, sampled_labels = SMOTE().fit_resample(all_features, labels)
+        sampled_features, sampled_labels = SMOTE(random_state=seed).fit_resample(all_features, labels)
         sampled_features = sampled_features.reshape(
             sampled_features.shape[0],
             features.shape[1],
