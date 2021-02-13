@@ -34,7 +34,7 @@
       "fillGradient": 0,
       "gridPos": {
         "h": 7,
-        "w": 11,
+        "w": 6,
         "x": 0,
         "y": 0
       },
@@ -66,15 +66,15 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "train_buyer_auto_encoder_current_value",
+          "expr": "train_buyer_current_loss",
           "interval": "",
-          "legendFormat": "buyer current loss",
+          "legendFormat": "current",
           "refId": "B"
         },
         {
-          "expr": "train_buyer_auto_encoder_best_value",
+          "expr": "train_buyer_best_loss",
           "interval": "",
-          "legendFormat": "buyer best loss",
+          "legendFormat": "best",
           "refId": "A"
         }
       ],
@@ -82,7 +82,109 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Buyer train result",
+      "title": "Buyer loss",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "pomalu.ale.jiste.prometheus",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 5,
+        "x": 6,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 15,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.3.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "train_buyer_current_accuracy",
+          "interval": "",
+          "legendFormat": "current",
+          "refId": "B"
+        },
+        {
+          "expr": "train_buyer_best_accuracy",
+          "interval": "",
+          "legendFormat": "best",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Buyer accuracy",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -278,8 +380,8 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 7,
-        "w": 11,
+        "h": 6,
+        "w": 6,
         "x": 0,
         "y": 7
       },
@@ -311,15 +413,15 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "train_seller_auto_encoder_current_value",
+          "expr": "train_seller_current_loss",
           "interval": "",
-          "legendFormat": "seller current loss",
+          "legendFormat": "current",
           "refId": "B"
         },
         {
-          "expr": "train_seller_auto_encoder_best_value",
+          "expr": "train_seller_best_loss",
           "interval": "",
-          "legendFormat": "seller best loss",
+          "legendFormat": "best",
           "refId": "A"
         }
       ],
@@ -327,7 +429,109 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Seller train result",
+      "title": "Seller loss",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "pomalu.ale.jiste.prometheus",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 5,
+        "x": 6,
+        "y": 7
+      },
+      "hiddenSeries": false,
+      "id": 16,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.3.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "train_seller_current_accuracy",
+          "interval": "",
+          "legendFormat": "current",
+          "refId": "B"
+        },
+        {
+          "expr": "train_seller_best_accuracy",
+          "interval": "",
+          "legendFormat": "best",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Seller accuracy",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -451,10 +655,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
-        "w": 11,
+        "h": 7,
+        "w": 6,
         "x": 0,
-        "y": 14
+        "y": 13
       },
       "hiddenSeries": false,
       "id": 14,
@@ -484,15 +688,15 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "train_classifier_current_value",
+          "expr": "train_classifier_current_loss",
           "interval": "",
-          "legendFormat": "classifier current loss",
+          "legendFormat": "current",
           "refId": "B"
         },
         {
-          "expr": "train_classifier_best_value",
+          "expr": "train_classifier_best_loss",
           "interval": "",
-          "legendFormat": "classifier best loss",
+          "legendFormat": "best",
           "refId": "A"
         }
       ],
@@ -500,7 +704,109 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Classifier train result",
+      "title": "Classifier loss",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "pomalu.ale.jiste.prometheus",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 5,
+        "x": 6,
+        "y": 13
+      },
+      "hiddenSeries": false,
+      "id": 17,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.3.5",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "train_classifier_current_accuracy",
+          "interval": "",
+          "legendFormat": "current",
+          "refId": "B"
+        },
+        {
+          "expr": "train_classifier_best_accuracy",
+          "interval": "",
+          "legendFormat": "best",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Classifier accuracy",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -653,7 +959,7 @@
         "h": 8,
         "w": 11,
         "x": 0,
-        "y": 22
+        "y": 20
       },
       "hiddenSeries": false,
       "id": 6,
@@ -747,12 +1053,12 @@
     "list": []
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "pomalu, ale jistĕ ...",
   "uid": "lQzG62-Gz",
-  "version": 3
+  "version": 4
 }

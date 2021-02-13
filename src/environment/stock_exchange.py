@@ -85,6 +85,8 @@ class StockExchange(gym.Env):
         return [seed1, seed2]
 
     @classmethod
-    def from_provider(cls, provider, days, start_date, end_date, **kwargs):
-        frames = DataPreparator.prepare_frames(provider, days, start_date, end_date)
+    def from_provider(cls, provider, days, start_date, end_date, tickers=None, **kwargs):
+        if tickers is None:
+            tickers = provider.tickers.keys()
+        frames = DataPreparator.prepare_frames(provider, days, start_date, end_date, tickers)
         return StockExchange(frames, days, **kwargs)
