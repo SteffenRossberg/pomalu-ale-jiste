@@ -44,9 +44,9 @@ class Trader(nn.Module):
     def forward_encoders(self, features):
         buyer_prediction = self.buyer(features)
         seller_prediction = self.seller(features)
-        buyer_mse = self.__calculate_mse(buyer_prediction, features)
-        seller_mse = self.__calculate_mse(seller_prediction, features)
-        prediction = self.__merge_mse(buyer_mse, seller_mse)
+        buyer_mse = self.__calculate_ratio(buyer_prediction, features)
+        seller_mse = self.__calculate_ratio(seller_prediction, features)
+        prediction = self.__merge_ratio(buyer_mse, seller_mse)
         return prediction
 
     def _create_auto_encoder(self):
@@ -77,7 +77,7 @@ class Trader(nn.Module):
         self.decision_maker = self._create_decision_maker().to(device)
 
     @staticmethod
-    def __calculate_mse(x, y):
+    def __calculate_ratio(x, y):
         diff = x - y
         diff = torch.squeeze(diff, dim=0)
         square = diff * diff
@@ -86,7 +86,7 @@ class Trader(nn.Module):
         return mse
 
     @staticmethod
-    def __merge_mse(buyer_mse, seller_mse):
+    def __merge_ratio(buyer_mse, seller_mse):
         seller_shape = seller_mse.shape
         seller_reshaped = seller_mse.view((seller_shape[1], seller_shape[0]))
         merged_mse = torch.cat((buyer_mse, torch.t(seller_reshaped)), 1)
@@ -116,13 +116,11 @@ class DecisionMaker(nn.Module):
                 nn.Linear(
                     in_features=in_features,
                     out_features=512)),
-            nn.Dropout(0.2),
             nn.LeakyReLU(),
             NetHelper.init_weights(
                 nn.Linear(
                     in_features=512,
                     out_features=512)),
-            nn.Dropout(0.2),
             nn.LeakyReLU(),
             NetHelper.init_weights(
                 nn.Linear(
@@ -134,13 +132,11 @@ class DecisionMaker(nn.Module):
                 nn.Linear(
                     in_features=in_features,
                     out_features=512)),
-            nn.Dropout(0.2),
             nn.LeakyReLU(),
             NetHelper.init_weights(
                 nn.Linear(
                     in_features=512,
                     out_features=512)),
-            nn.Dropout(0.2),
             nn.LeakyReLU(),
             NetHelper.init_weights(
                 nn.Linear(
@@ -188,7 +184,6 @@ class Classifier(nn.Module):
             nn.Dropout(0.2),
             nn.LeakyReLU(),
             NetHelper.init_weights(nn.Linear(256, 3)),
-            nn.Dropout(0.2),
             nn.Sigmoid()
         )
 
@@ -240,7 +235,6 @@ class Encoder(nn.Module):
             self.shape = ConvolutionHelper.calc_2d_size(self.shape, kernel, stride, padding)
             layers[key + '_pool'] = nn.MaxPool2d(kernel_size=kernel, padding=(1, 0), stride=(1, 1))
             self.shape = ConvolutionHelper.calc_2d_size(self.shape, kernel, padding=(1, 0), stride=(1, 1))
-            layers[key + '_drop_out'] = nn.Dropout2d(0.2)
             layers[key + '_activation'] = nn.LeakyReLU()
             self.in_channels = self.out_channels
             self.out_channels += int(self.out_channels / 4)
@@ -253,13 +247,11 @@ class Encoder(nn.Module):
                 nn.Linear(
                     in_features=self.conv_out_size,
                     out_features=int(self.conv_out_size / 4))),
-            nn.Dropout(0.2),
             nn.LeakyReLU(),
             NetHelper.init_weights(
                 nn.Linear(
                     in_features=int(self.conv_out_size / 4),
                     out_features=output_size)),
-            nn.Dropout(0.2),
             nn.LeakyReLU()
         )
 
@@ -303,7 +295,6 @@ class Decoder(nn.Module):
                     stride,
                     padding))
             self.shape = ConvolutionHelper.calc_2d_size(self.shape, kernel, stride, padding)
-            layers[key + '_drop_out'] = nn.Dropout2d(0.2)
             layers[key + '_activation'] = nn.LeakyReLU()
 
         self.transpose = nn.Sequential(layers)
@@ -314,13 +305,11 @@ class Decoder(nn.Module):
                 nn.Linear(
                     in_features=self.input_size,
                     out_features=128)),
-            nn.Dropout(0.2),
             nn.LeakyReLU(),
             NetHelper.init_weights(
                 nn.Linear(
                     in_features=128,
                     out_features=self.out_channels * self.shape[0] * self.shape[1])),
-            nn.Dropout(0.2),
             nn.LeakyReLU()
         )
 

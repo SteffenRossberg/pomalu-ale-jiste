@@ -79,10 +79,8 @@ class PortfolioState:
     def encode(self):
         day_yield = self._frame['prices'][self._offset] / self._frame['prices'][self._offset - 1] - 1.0
         has_stocks = 1.0 if self._stock_count > 0 else 0.0
-        last_day_position = np.array(self._frame['last_days'][self._offset], dtype=np.float32)
-        state = np.append(np.array([day_yield, has_stocks], dtype=np.float32), last_day_position)
         price_window = np.array(self._frame['windows'][self._offset], dtype=np.float32).flatten()
-        encoded = np.append(price_window, state)
+        encoded = np.append(price_window, np.array([day_yield, has_stocks], dtype=np.float32))
         return encoded
 
     def reset(self, frame, offset):
