@@ -243,6 +243,7 @@ class Encoder(nn.Module):
 
         self.convolution = nn.Sequential(layers)
         self.linear = nn.Sequential(
+            nn.Dropout(0.2),
             NetHelper.init_weights(
                 nn.Linear(
                     in_features=self.conv_out_size,
@@ -299,18 +300,20 @@ class Decoder(nn.Module):
 
         self.transpose = nn.Sequential(layers)
         self.out_channels = channels[-1]
+        self.conv_out_size = self.out_channels * self.shape[0] * self.shape[1]
 
         self.linear = nn.Sequential(
             NetHelper.init_weights(
                 nn.Linear(
                     in_features=self.input_size,
-                    out_features=128)),
+                    out_features=int(self.conv_out_size / 4))),
             nn.LeakyReLU(),
             NetHelper.init_weights(
                 nn.Linear(
-                    in_features=128,
+                    in_features=int(self.conv_out_size / 4),
                     out_features=self.out_channels * self.shape[0] * self.shape[1])),
-            nn.LeakyReLU()
+            nn.LeakyReLU(),
+            nn.Dropout(0.2)
         )
 
     def forward(self, features):
