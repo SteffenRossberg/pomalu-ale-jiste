@@ -130,7 +130,8 @@ buy_samples, sell_samples, none_samples = \
     DataPreparator.over_sample(
         raw_buy_samples,
         raw_sell_samples,
-        raw_none_samples)
+        raw_none_samples,
+        seed)
 
 print("Prepare frames ...")
 frames = DataPreparator.prepare_frames(provider, sample_days, train_start_date, train_end_date)
@@ -187,13 +188,16 @@ if args.train_seller > 0:
 if args.train_classifier > 0:
     classifier_features = []
     classifier_labels = []
-    for i in range(len(buy_samples)):
-        classifier_features.append(buy_samples[i])
-        classifier_features.append(sell_samples[i])
-        classifier_features.append(none_samples[i])
-        classifier_labels.append(1)
-        classifier_labels.append(2)
-        classifier_labels.append(0)
+    for i in range(np.max((len(buy_samples), len(sell_samples), len(none_samples)))):
+        if i < len(buy_samples):
+            classifier_features.append(buy_samples[i])
+            classifier_labels.append(1)
+        if i < len(sell_samples):
+            classifier_features.append(sell_samples[i])
+            classifier_labels.append(2)
+        if i < len(none_samples):
+            classifier_features.append(none_samples[i])
+            classifier_labels.append(0)
     classifier_features = np.array(classifier_features, dtype=np.float32)
     classifier_labels = np.array(classifier_labels, dtype=np.int)
     manager.init_seed(seed, deterministic)
