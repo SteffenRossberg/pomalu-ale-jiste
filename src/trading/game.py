@@ -396,12 +396,10 @@ class Game:
                     row[f'{ticker}_last_days'] is None or
                     np.sum(window) == 0.0):
                 continue
-            last_day_position = np.array(row[f'{ticker}_last_days'], dtype=np.float32)
-            price_window = np.array(window, dtype=np.float32).flatten()
             day_yield = quotes[f'{ticker}_close'][index] / quotes[f'{ticker}_close'][index - 1] - 1.0
             has_stocks = 1.0 if ticker in portfolio and portfolio[ticker]['count'] > 0 else 0.0
-            state = np.append(np.array([day_yield, has_stocks], dtype=np.float32), last_day_position)
-            features = np.append(price_window, state)
+            price_window = np.array(window, dtype=np.float32).flatten()
+            features = np.append(price_window, np.array([day_yield, has_stocks], dtype=np.float32))
             feature_batch.append(features)
             evaluated_tickers.append(ticker)
         if len(evaluated_tickers) == 0:

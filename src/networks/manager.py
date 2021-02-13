@@ -30,7 +30,7 @@ class NetManager:
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
 
-    def create_trader(self, days, state_size=7):
+    def create_trader(self, days, state_size=2):
         trader = Trader(days, state_size).to(self.device)
         return trader
 
