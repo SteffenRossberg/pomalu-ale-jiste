@@ -77,11 +77,13 @@ class DataPreparator:
                 if quotes is None:
                     continue
                 quotes[f'{ticker}_window'] = cls.calculate_windows(quotes, days=days, normalize=True)
+                quotes[f'{ticker}_range'] = cls.calculate_ranges(quotes, days=days)
                 quotes[f'{ticker}_last_days'] = cls.calculate_last_days(quotes, days=days, normalize=True)
                 quotes = quotes.rename(columns={
                     'close': f'{ticker}_close'
                 })
-                quotes = quotes[['date', f'{ticker}_window', f'{ticker}_last_days', f'{ticker}_close']].copy()
+                columns = ['date', f'{ticker}_window', f'{ticker}_range', f'{ticker}_last_days', f'{ticker}_close']
+                quotes = quotes[columns].copy()
                 if all_quotes is None:
                     all_quotes = quotes
                 else:
@@ -369,6 +371,15 @@ class DataPreparator:
                     else normalize_action(np.array([win.values.tolist()], dtype=np.float32)))
                    for win in quotes[columns].rolling(days)]
         return windows
+
+    @classmethod
+    def calculate_ranges(cls, quotes, days=5, columns=None):
+        if columns is None:
+            columns = ['open', 'high', 'low', 'close']
+        quotes = quotes.copy()
+        ranges = [(win.max() - win.min()) / win.min() * 100.0
+                  for win in quotes[columns].rolling(days)]
+        return ranges
 
     @staticmethod
     def filter_windows_by_signal(quotes, signal_column, window_column='window'):
