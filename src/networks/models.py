@@ -13,7 +13,6 @@ class Trader(nn.Module):
         self.buyer = self._create_auto_encoder()
         self.seller = self._create_auto_encoder()
         self.classifier = self._create_classifier()
-        self.decision_maker = self._create_decision_maker()
 
     def forward(self, features):
         encoder_features = features[:, :features.shape[1] - self.state_size]
@@ -25,15 +24,6 @@ class Trader(nn.Module):
 
         # run classifier
         classifier_prediction = self.classifier(classifier_features)
-
-        # state_features = features[:, -self.state_size:]
-        # state_features = state_features.view((features.shape[0], 1, 1, self.state_size))
-        # state_features = state_features.to(features.device)
-        # decision_features = self.__merge_state(classifier_prediction, state_features)
-
-        # # run decision maker
-        # decision = self.decision_maker(decision_features)
-        # return decision
 
         decision = classifier_prediction.view((classifier_prediction.shape[0], 3))
         return decision
@@ -55,10 +45,6 @@ class Trader(nn.Module):
         auto_encoder = AutoEncoder(encoder, decoder)
         return auto_encoder
 
-    def _create_decision_maker(self):
-        selector = DecisionMaker(self.state_size)
-        return selector
-
     @staticmethod
     def _create_classifier():
         classifier = Classifier()
@@ -72,9 +58,6 @@ class Trader(nn.Module):
 
     def reset_classifier(self, device):
         self.classifier = self._create_classifier().to(device)
-
-    def reset_decision_maker(self, device):
-        self.decision_maker = self._create_decision_maker().to(device)
 
     @staticmethod
     def __calculate_ratio(x, y):
@@ -91,68 +74,6 @@ class Trader(nn.Module):
         seller_reshaped = seller_mse.view((seller_shape[1], seller_shape[0]))
         merged_mse = torch.cat((buyer_mse, torch.t(seller_reshaped)), 1)
         return merged_mse
-
-    def __merge_state(self, features, state):
-        prepared_features = self.__prepare_data(features)
-        prepared_state = self.__prepare_data(state)
-        merged_features = torch.cat((prepared_features, prepared_state), 1)
-        result = merged_features.view((features.shape[0], 1, 1, merged_features.shape[-1]))
-        return result
-
-    @staticmethod
-    def __prepare_data(data):
-        data_shape = data.shape
-        prepared_data = data.view((data_shape[0], data_shape[-1]))
-        return prepared_data
-
-
-class DecisionMaker(nn.Module):
-    def __init__(self, state_size):
-        super(DecisionMaker, self).__init__()
-        self.state_size = state_size
-        in_features = 3 + state_size
-        self.adv = nn.Sequential(
-            NetHelper.init_weights(
-                nn.Linear(
-                    in_features=in_features,
-                    out_features=512)),
-            nn.LeakyReLU(),
-            NetHelper.init_weights(
-                nn.Linear(
-                    in_features=512,
-                    out_features=512)),
-            nn.LeakyReLU(),
-            NetHelper.init_weights(
-                nn.Linear(
-                    in_features=512,
-                    out_features=3)),
-        )
-        self.val = nn.Sequential(
-            NetHelper.init_weights(
-                nn.Linear(
-                    in_features=in_features,
-                    out_features=512)),
-            nn.LeakyReLU(),
-            NetHelper.init_weights(
-                nn.Linear(
-                    in_features=512,
-                    out_features=512)),
-            nn.LeakyReLU(),
-            NetHelper.init_weights(
-                nn.Linear(
-                    in_features=512,
-                    out_features=1)),
-        )
-
-    def forward(self, features):
-        val = self.val(features)
-        adv = self.adv(features)
-        observation = val + adv - adv.mean(dim=3, keepdim=True)
-        observation = observation.view((features.shape[0], 3))
-        return observation
-
-    def _forward_unimplemented(self, *features: Any) -> None:
-        pass
 
 
 class TrainClassifier(nn.Module):
