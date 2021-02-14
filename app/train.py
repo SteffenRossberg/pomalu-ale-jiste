@@ -10,6 +10,8 @@ from app.utility.logger import Logger
 import prometheus_client
 import numpy as np
 
+if __name__ != "__main__":
+    exit(0)
 
 prometheus_client.start_http_server(5000, '0.0.0.0')
 
