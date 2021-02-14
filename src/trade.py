@@ -16,7 +16,7 @@ trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'
 trade_intra_day = False
 trader_start_capital = 50_000.0
-trader_max_limit_positions = 35
+trader_max_limit_positions = 10  # 35
 trader_order_fee = 1.0
 trader_capital_gains_tax = 25.0
 trader_solidarity_surcharge = 5.5
@@ -52,7 +52,6 @@ trader = manager.create_trader(sample_days)
 buyer_optimizer, buyer_result = manager.create_buyer_optimizer(trader)
 seller_optimizer, seller_result = manager.create_seller_optimizer(trader)
 classifier_optimizer, classifier_result = manager.create_classifier_optimizer(trader)
-decision_maker_optimizer, decision_maker_result = manager.create_decision_maker_optimizer(trader)
 
 buyer_optimizer, buyer_result = manager.load(
     'buyer',
@@ -77,14 +76,6 @@ classifier_optimizer, classifier_result = manager.load(
     trader.reset_classifier,
     lambda: manager.create_classifier_optimizer(trader),
     classifier_result)
-
-decision_maker_optimizer, decision_maker_result = manager.load(
-    'decision_maker',
-    trader.decision_maker,
-    decision_maker_optimizer,
-    trader.reset_decision_maker,
-    lambda: manager.create_decision_maker_optimizer(trader),
-    decision_maker_result)
 
 print("Prepare quotes ...")
 all_quotes, all_tickers = DataPreparator.prepare_all_quotes(
