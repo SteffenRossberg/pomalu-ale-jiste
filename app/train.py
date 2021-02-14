@@ -2,11 +2,11 @@ import argparse
 import torch
 import os
 from datetime import datetime
-from src.environment.dataprovider import DataProvider
-from src.preparation.preparator import DataPreparator
-from src.networks.manager import NetManager
-from src.training.gym import Gym
-from src.utility.logger import Logger
+from app.environment.dataprovider import DataProvider
+from app.preparation.preparator import DataPreparator
+from app.networks.manager import NetManager
+from app.training.gym import Gym
+from app.utility.logger import Logger
 import prometheus_client
 import numpy as np
 

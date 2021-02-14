@@ -1,10 +1,10 @@
 import argparse
 import torch
 from datetime import datetime
-from src.environment.dataprovider import DataProvider
-from src.preparation.preparator import DataPreparator
-from src.networks.manager import NetManager
-from src.trading.game import Game
+from app.environment.dataprovider import DataProvider
+from app.preparation.preparator import DataPreparator
+from app.networks.manager import NetManager
+from app.trading.game import Game
 
 if __name__ != "__main__":
     exit(0)
