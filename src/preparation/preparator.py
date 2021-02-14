@@ -341,6 +341,18 @@ class DataPreparator:
                            quotes[int(r['sell_start']):int(r['sell_end']) + 1]['buy_index'].max() > 0)
                        else np.nan),
             axis=1)
+
+        quotes['tmp_sell'] = quotes['sell'].fillna(method='bfill')
+        quotes['tmp_buy'] = quotes['buy'].fillna(method='ffill')
+        quotes['buy'] = quotes.apply(
+            lambda r: (r['buy'] if r['buy'] > 0.0 and (r['tmp_sell'] / r['tmp_buy']) - 1.0 > 0.05 else np.nan),
+            axis=1
+        )
+        quotes['sell'] = quotes.apply(
+            lambda r: (r['sell'] if r['sell'] > 0.0 and (r['tmp_sell'] / r['tmp_buy']) - 1.0 > 0.05 else np.nan),
+            axis=1
+        )
+
         return quotes[['buy', 'sell']]
 
     @staticmethod
