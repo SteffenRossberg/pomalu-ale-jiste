@@ -7,12 +7,13 @@ from app.utility.logger import Logger
 from app.environment.enums import Actions
 from datetime import timedelta
 
+
 class Game:
 
     def __init__(
             self,
             stock_exchange,
-            decision_maker,
+            agent,
             max_positions,
             max_limit_positions,
             all_quotes,
@@ -26,7 +27,7 @@ class Game:
             device,
             days=5):
         self.stock_exchange = stock_exchange
-        self.decision_maker = decision_maker
+        self.agent = agent
         self.max_positions = max_positions
         self.max_limit_positions = max_limit_positions
         self.all_quotes = all_quotes
@@ -45,33 +46,33 @@ class Game:
     def trade(
             self,
             run_id,
-            intraday=False,
-            decision_maker=None):
-
-        if decision_maker is None:
-            decision_maker = self.decision_maker
+            profit_taking_threshold=None,
+            buy_and_hold=False,
+            intra_day=False):
 
         result = ''
 
         print(f"Trade limited all stocks from {self.start_date} to {self.end_date} ...")
         message, limit_all_investments, limit_all_gain_loss = \
             self._trade(
-                decision_maker,
-                self.all_quotes,
-                self.all_tickers,
-                True,
-                self.stock_exchange.tickers,
+                quotes=self.all_quotes,
+                all_tickers=self.all_tickers,
+                profit_taking_threshold=profit_taking_threshold,
+                buy_and_hold=buy_and_hold,
+                report_each_trade=True,
+                tickers=self.stock_exchange.tickers,
                 max_positions=self.max_limit_positions)
         result += f'\nTrade Portfolio (max {self.max_limit_positions} stocks): {message}'
 
         print(f"Trade all stocks from {self.start_date} to {self.end_date} ...")
         message, all_investments, all_gain_loss = \
             self._trade(
-                decision_maker,
-                self.all_quotes,
-                self.all_tickers,
-                True,
-                self.stock_exchange.tickers,
+                quotes=self.all_quotes,
+                all_tickers=self.all_tickers,
+                profit_taking_threshold=profit_taking_threshold,
+                buy_and_hold=buy_and_hold,
+                report_each_trade=True,
+                tickers=self.stock_exchange.tickers,
                 max_positions=self.max_positions)
         result += f'\nTrade All ({self.max_positions} stocks): {message}'
 
@@ -89,7 +90,7 @@ class Game:
 
         index_ticker = 'URTH'
         index_title = self.stock_exchange.etf_tickers[index_ticker]
-        if intraday:
+        if intra_day:
             compare_index = self.stock_exchange.load_intra_day(index_ticker, self.start_date, self.end_date, True)
         else:
             compare_index = self.stock_exchange.load(index_ticker, self.start_date, self.end_date, True)
@@ -126,7 +127,7 @@ class Game:
             resulting_frame[change_column] = resulting_frame[column].pct_change(1).fillna(0.0) * 100.0
             resulting_frame[column] = \
                 resulting_frame.apply(
-                    lambda row: np.sum(resulting_frame[change_column].values[0:int(row['index'] + 1)]),
+                    lambda row: resulting_frame[change_column].values[0:int(row['index'] + 1)].sum(),
                     axis=1)
 
         resulting_frame.set_index(resulting_frame['date'], inplace=True)
@@ -254,9 +255,10 @@ class Game:
 
     def _trade(
             self,
-            agent,
             quotes,
             all_tickers,
+            profit_taking_threshold,
+            buy_and_hold,
             report_each_trade=True,
             tickers=None,
             max_positions=None):
@@ -271,11 +273,13 @@ class Game:
         total_gain_loss = 0.0
 
         for index, row in quotes.iterrows():
-            actions = self.calculate_actions(agent, tickers, portfolio, quotes, row, index)
+            actions = self.calculate_actions(tickers, portfolio, quotes, row, index)
             if actions is not None:
                 self.update_last_prices(row, portfolio)
-                # self.prepare_buy_and_hold(actions)
-                self.prepare_profit_taking(row, portfolio, actions, 20.0)
+                if buy_and_hold:
+                    self.prepare_buy_and_hold(actions)
+                if profit_taking_threshold > 0.0:
+                    self.prepare_profit_taking(row, portfolio, actions, profit_taking_threshold)
                 investment, earnings = self.sell(row, investment, portfolio, actions, report_each_trade)
                 investment = self.buy(row, investment, portfolio, actions, max_positions)
                 total_gain_loss += earnings
@@ -389,7 +393,6 @@ class Game:
 
     def calculate_actions(
             self,
-            agent,
             tickers,
             portfolio,
             quotes,
@@ -398,7 +401,7 @@ class Game:
         features, eval_tickers = self.calculate_features(tickers, portfolio, quotes, row, index)
         if eval_tickers is None:
             return None
-        prediction = agent(features).cpu().detach().numpy()
+        prediction = self.agent(features).cpu().detach().numpy()
         action_indexes = np.argmax(prediction, axis=1)
         action_values = np.amax(prediction, axis=1)
         actions = {
