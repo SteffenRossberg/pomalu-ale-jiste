@@ -4,8 +4,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import rc
 from matplotlib.figure import Figure
-from src.utility.logger import Logger
-from src.environment.enums import Actions
+from app.utility.logger import Logger
+from app.environment.enums import Actions
 
 
 class Game:

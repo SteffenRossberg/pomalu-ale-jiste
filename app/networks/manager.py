@@ -1,7 +1,7 @@
 import torch
 import os
 import torch.optim as optim
-from src.networks.models import Trader
+from app.networks.models import Trader
 import numpy as np
 import random
 
