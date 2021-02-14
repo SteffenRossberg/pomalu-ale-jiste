@@ -2,6 +2,8 @@ import torch
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib import rc
+from matplotlib.figure import Figure
 from src.utility.logger import Logger
 from src.environment.enums import Actions
 
@@ -141,7 +143,6 @@ class Game:
             ax=ax[0],
             figsize=(20, 10),
             linewidth=2,
-            colormap='Spectral',
             title=f'Investment vs {index_title}')
 
         gain_loss_columns = [
@@ -153,8 +154,33 @@ class Game:
             ax=ax[1],
             figsize=(20, 10),
             linewidth=2,
-            colormap='Spectral',
             title=f'Portfolio Changes vs {index_title}')
+
+        text_color = '#cfcfcf'
+        rc('font', weight='bold')
+        rc('text', color=text_color)
+        fig.patch.set_facecolor('#1d1d1d')
+        for current_ax in ax:
+            x_min = resulting_frame.index.min()
+            x_max = resulting_frame.index.max()
+            current_ax.set_xlim(x_min, x_max)
+            current_ax.grid(which='major', axis='both')
+            current_ax.spines['bottom'].set_color(text_color)
+            current_ax.spines['top'].set_color(text_color)
+            current_ax.spines['right'].set_color(text_color)
+            current_ax.spines['left'].set_color(text_color)
+            current_ax.tick_params(axis='both', which='major', colors=text_color, labelsize='large', grid_alpha=0.2)
+            current_ax.set_facecolor('#1f1f1f')
+            current_ax.xaxis.label.set_visible(False)
+            current_ax.yaxis.label.set_visible(False)
+            current_ax.title.set_color(text_color)
+            current_ax.title.set_weight('bold')
+            legend = current_ax.legend(
+                facecolor='#333333',
+                framealpha=0.4,
+                ncol=1)
+            for text in legend.get_texts():
+                text.set_color(text_color)
 
         results = resulting_frame[gain_loss_columns].copy()
         results.to_csv(f'data/{run_id}.trading.gain_loss.csv')
