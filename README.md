@@ -4,20 +4,15 @@
 chew through some time series like stock prices.
 
 ![pomalu-ale-jiste](docs/Trader.vs.MSCI.World.ETF.png)
-* taken from pomalu-ale-jiste v0.0.4 pre-release
+* taken from pomalu-ale-jiste v0.0.5 pre-release
 
 ## my way I will go ...
 
-First, I want to create a simple auto-encoder that remembers possible
+1. I want to create a simple auto-encoder that remembers possible
 patterns in stock market data. Training this network should be solvable
 using unsupervised learning.
-
-Second, I will train a network to classify comparison results from input
+1. Then I want to train a network to classify comparison results from input
 and output of the auto-encoder using supervised learning.
-
-Finally, I will attempt to train a "trader" agent, constructed from
-auto-encoder, classifier, and an additional network itself. I'll give
-reinforcement learning a try.
 
 My personal goal is to build an overall network that I can throw some
 historical end of day data into and observe how it would act alongside

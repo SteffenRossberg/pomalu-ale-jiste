@@ -6,8 +6,6 @@ from src.environment.dataprovider import DataProvider
 from src.preparation.preparator import DataPreparator
 from src.networks.manager import NetManager
 from src.training.gym import Gym
-from src.environment.stock_exchange import StockExchange
-from src.environment.enums import TrainingLevels
 from src.utility.logger import Logger
 import prometheus_client
 import numpy as np
@@ -51,11 +49,6 @@ parser.add_argument("--train_classifier",
                     type=int,
                     default=0,
                     help="Train classifier (sample classifier)")
-parser.add_argument("--train_decision_maker",
-                    required=False,
-                    type=int,
-                    default=0,
-                    help="Train decision maker")
 args = parser.parse_args()
 
 # use GPU if available
@@ -77,7 +70,6 @@ trader = manager.create_trader(sample_days)
 buyer_optimizer, buyer_result = manager.create_buyer_optimizer(trader)
 seller_optimizer, seller_result = manager.create_seller_optimizer(trader)
 classifier_optimizer, classifier_result = manager.create_classifier_optimizer(trader)
-decision_maker_optimizer, decision_maker_result = manager.create_decision_maker_optimizer(trader)
 
 buyer_optimizer, buyer_result = \
     manager.load(
@@ -106,15 +98,6 @@ classifier_optimizer, classifier_result = \
         lambda: manager.create_classifier_optimizer(trader),
         classifier_result)
 
-decision_maker_optimizer, decision_maker_result = \
-    manager.load(
-        'decision_maker',
-        trader.decision_maker,
-        decision_maker_optimizer,
-        trader.reset_decision_maker,
-        lambda: manager.create_decision_maker_optimizer(trader),
-        decision_maker_result)
-
 print("Prepare samples ...")
 raw_buy_samples, raw_sell_samples, raw_none_samples = \
     DataPreparator.prepare_samples(
@@ -132,10 +115,6 @@ buy_samples, sell_samples, none_samples = \
         raw_sell_samples,
         raw_none_samples,
         seed)
-
-print("Prepare frames ...")
-frames = DataPreparator.prepare_frames(provider, sample_days, train_start_date, train_end_date)
-
 
 os.makedirs(f'data/networks/{run_id}', exist_ok=True)
 
@@ -220,76 +199,3 @@ if args.train_classifier > 0:
         lambda: manager.create_classifier_optimizer(trader),
         classifier_result)
     Logger.log(run_id, f"classifier: {classifier_result:.7f}")
-
-if args.train_decision_maker > 0:
-    print("Prepare stock exchange environment ...")
-    training_level = TrainingLevels.Skip | TrainingLevels.Buy | TrainingLevels.Hold | TrainingLevels.Sell
-    train_stock_exchange = StockExchange.from_provider(
-        provider,
-        sample_days,
-        train_start_date,
-        train_end_date,
-        random_offset_on_reset=False,
-        reset_on_close=False,
-        seed=seed)
-    validation_stock_exchange = StockExchange.from_provider(
-        provider,
-        sample_days,
-        validation_start_date,
-        validation_end_date,
-        tickers=[ticker for ticker in provider.tickers.keys()][:20],
-        random_offset_on_reset=False,
-        reset_on_close=False,
-        seed=seed)
-    print(f"Train decision maker {str(training_level)} ...")
-    train_stock_exchange.train_level = training_level
-    validation_stock_exchange.train_level = training_level
-    decision_maker_result = gym.train_trader(
-        'decision_maker',
-        trader,
-        decision_maker_optimizer,
-        decision_maker_result,
-        train_stock_exchange,
-        validation_stock_exchange)
-    print("Reload trader with best training result after training ...")
-    decision_maker_optimizer, decision_maker_result = manager.load(
-        'decision_maker',
-        trader.decision_maker,
-        decision_maker_optimizer,
-        trader.reset_decision_maker,
-        lambda: manager.create_decision_maker_optimizer(trader),
-        decision_maker_result)
-    Logger.log(run_id, f"decision_maker: {decision_maker_result:.7f}")
-    Logger.log(run_id, f"Train Level: {str(training_level)}")
-    Logger.log(run_id, f"Trader Best mean value: {decision_maker_result:.7f}")
-
-# classifier_features = []
-# classifier_labels = []
-# for i in range(len(buy_samples)):
-#     classifier_features.append(buy_samples[i])
-#     classifier_features.append(sell_samples[i])
-#     classifier_features.append(none_samples[i])
-#     classifier_labels.append(1)
-#     classifier_labels.append(2)
-#     classifier_labels.append(0)
-# classifier_features = np.array(classifier_features, dtype=np.float32)
-# classifier_features = classifier_features.reshape(classifier_features.shape[0], sample_days * 4)
-# classifier_labels = np.array(classifier_labels, dtype=np.int)
-#
-#
-# autoPyTorch = AutoNetClassification("full_cs")
-# autoPyTorch.print_help()
-# autoPyTorch.fit(
-#     classifier_features,
-#     classifier_labels,
-#     log_level='debug',
-#     max_runtime=10_000_000,
-#     min_budget=10,
-#     max_budget=20,
-#     budget_type='epochs',
-#     use_pynisher=False,
-#     over_sampling_methods=['none'])
-
-# for row, index in all_quotes.iterrows():
-#     window = row['MSFT_window'].values
-#     y_pred = autoPyTorch.predict(window)

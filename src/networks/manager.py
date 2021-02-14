@@ -67,10 +67,6 @@ class NetManager:
     def create_classifier_optimizer(trader):
         return optim.Adam(trader.classifier.parameters()), 100.0
 
-    @staticmethod
-    def create_decision_maker_optimizer(trader):
-        return optim.Adam(trader.decision_maker.parameters(), lr=0.0001), -100.0
-
     def load_optimizer(self, file_name, optimizer, default_result):
         file_path = f'{self.data_directory}/{file_name}.optimizer.pt'
         result = default_result

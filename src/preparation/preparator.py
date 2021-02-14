@@ -9,47 +9,6 @@ from imblearn.over_sampling import SMOTE
 class DataPreparator:
 
     @classmethod
-    def prepare_frames(
-            cls,
-            provider,
-            days=5,
-            start_date='2000-01-01',
-            end_date='2015-12-31',
-            tickers=None):
-        frames_path = f'data/eod/{start_date}.{end_date}/rl_frames.json'
-        if not os.path.exists(frames_path):
-            frames = []
-            tickers = tickers if tickers is not None else provider.tickers.keys()
-            for ticker in tickers:
-                company = provider.tickers[ticker]
-                print(f'Loading {ticker:5} - {company} ...')
-                quotes = provider.load(ticker, start_date, end_date)
-                if quotes is None:
-                    continue
-                quotes['window'] = cls.calculate_windows(quotes, days, normalize=True)
-                quotes['last_days'] = cls.calculate_last_days(quotes, days, normalize=True)
-                quotes[['buy', 'sell']] = cls.calculate_signals(quotes)
-                frames.append({
-                    'ticker': ticker,
-                    'company': company,
-                    'dates': quotes['date'].dt.strftime('%Y-%m-%d').values[days:].tolist(),
-                    'windows': [window.tolist() for window in quotes['window'].values[days:]],
-                    'prices': quotes['close'].values[days:].tolist(),
-                    'buy_signals': quotes['buy'].values[days:].tolist(),
-                    'sell_signals': quotes['sell'].values[days:].tolist(),
-                    'buys': quotes['buy'].fillna(method='ffill').values[days:].tolist(),
-                    'sells': quotes['sell'].fillna(method='ffill').values[days:].tolist(),
-                    'last_days': [last_days for last_days in quotes['last_days'].values[days:]]
-                })
-            with open(frames_path, 'w') as outfile:
-                print(f'Saving {frames_path} ...')
-                json.dump(frames, outfile, indent=4)
-        with open(frames_path, 'r') as infile:
-            print(f'Loading {frames_path} ...')
-            frames = json.load(infile)
-        return {frame['ticker']: frame for frame in frames}
-
-    @classmethod
     def prepare_all_quotes(
             cls,
             provider,
@@ -341,6 +300,18 @@ class DataPreparator:
                            quotes[int(r['sell_start']):int(r['sell_end']) + 1]['buy_index'].max() > 0)
                        else np.nan),
             axis=1)
+
+        quotes['tmp_sell'] = quotes['sell'].fillna(method='bfill')
+        quotes['tmp_buy'] = quotes['buy'].fillna(method='ffill')
+        quotes['buy'] = quotes.apply(
+            lambda r: (r['buy'] if r['buy'] > 0.0 and (r['tmp_sell'] / r['tmp_buy']) - 1.0 > 0.05 else np.nan),
+            axis=1
+        )
+        quotes['sell'] = quotes.apply(
+            lambda r: (r['sell'] if r['sell'] > 0.0 and (r['tmp_sell'] / r['tmp_buy']) - 1.0 > 0.05 else np.nan),
+            axis=1
+        )
+
         return quotes[['buy', 'sell']]
 
     @staticmethod
