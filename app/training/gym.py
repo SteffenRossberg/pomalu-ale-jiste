@@ -2,8 +2,8 @@ import torch
 import numpy as np
 from torch import nn as nn
 from prometheus_client import Gauge
-from src.networks.manager import NetManager
-from src.networks.models import TrainClassifier, AutoEncoder
+from app.networks.manager import NetManager
+from app.networks.models import TrainClassifier, AutoEncoder
 
 
 class Gym:
