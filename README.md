@@ -39,17 +39,35 @@ The project provides a dashboard to visualize the training process using contain
 
 ![pomalu-ale-jiste](docs/Train.Progress.png)
 
-### Prerequisits
+## prerequisits
 
-- Install docker and docker-compose, further details in ["Get Docker"](https://docs.docker.com/get-docker/)
+* subscribe to [Tiingo API](https://api.tiingo.com) to get an API token
+* install [docker](https://docs.docker.com/engine/install/) and [docker-compose](https://docs.docker.com/compose/install/)
+* install requirements using ```pip3 install -r requirements.txt```
 
-### Run
-1. Execute ```docker-compose up``` inside of ```pomalu-ale-jiste/docker``` folder 
-in your favorite command shell
-1. Open [http://localhost:3000](http://localhost:3000) in
-your favorite browser
-1. Log in with the user ``admin`` and the password ``admin``, you will be asked for a new password by default.
-1. Navigate to ```pomalu, ale jistĕ ...``` dashboard in folder ```Services```
+## train
+
+1. in terminal navigate to ```pomalu-ale-jiste/src``` path
+1. to train trader from 01/01/2000 to 12/31/2012 run
+```
+export PYTHONPATH={path to pomalu-ale-jiste root folder}
+python3.8 train.py --apikey={your Tiingo Api-Key} --train_buyer=1 --train_seller=1 --train_classifier=1
+```
+
+### view graphs of training process
+1. in terminal navigate to ```pomalu-ale-jiste/docker``` path
+1. start docker containers using ```docker-compose up```
+1. open [http://localhost:3000](http://localhost:3000) in your favorite browser (initial user and password are ```admin```)
+1. navigate to ```pomalu, ale jistĕ``` dashboard
+
+## trade
+
+1. in terminal navigate to ```pomalu-ale-jiste/src``` path
+1. to test trader from 01/01/2016 to 12/31/2020 run
+```
+export PYTHONPATH={path to pomalu-ale-jiste root folder}
+python3.8 trade.py --apikey={your Tiingo Api-Key}
+```
 
 ## WARNING
 
