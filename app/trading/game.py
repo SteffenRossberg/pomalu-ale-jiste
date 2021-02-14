@@ -3,10 +3,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import rc
-from matplotlib.figure import Figure
 from app.utility.logger import Logger
 from app.environment.enums import Actions
-
+from datetime import timedelta
 
 class Game:
 
@@ -132,15 +131,15 @@ class Game:
 
         resulting_frame.set_index(resulting_frame['date'], inplace=True)
 
-        fig, ax = plt.subplots(nrows=2)
+        fig, axis = plt.subplots(nrows=2)
 
         investment_columns = [
             all_title,
             limit_all_title
         ]
-        resulting_frame[index_title].plot.area(ax=ax[0], stacked=False)
+        resulting_frame[index_title].plot.area(ax=axis[0], stacked=False)
         resulting_frame[investment_columns].plot(
-            ax=ax[0],
+            ax=axis[0],
             figsize=(20, 10),
             linewidth=2,
             title=f'Investment vs {index_title}')
@@ -149,45 +148,66 @@ class Game:
             gain_loss_all_title,
             gain_loss_limit_all_title
         ]
-        resulting_frame[index_title].plot.area(ax=ax[1], stacked=False)
+        resulting_frame[index_title].plot.area(ax=axis[1], stacked=False)
         resulting_frame[gain_loss_columns].plot(
-            ax=ax[1],
+            ax=axis[1],
             figsize=(20, 10),
             linewidth=2,
             title=f'Portfolio Changes vs {index_title}')
 
+        x_min, x_max = self._get_x_min_max(resulting_frame)
+        axis[0].set_xlim(x_min, x_max)
+        axis[1].set_xlim(x_min, x_max)
+        y_min, y_max = self._get_y_min_max(resulting_frame, investment_columns, index_title)
+        axis[0].set_ylim(y_min, y_max)
+        y_min, y_max = self._get_y_min_max(resulting_frame, gain_loss_columns, index_title)
+        axis[1].set_ylim(y_min, y_max)
+
+        results = resulting_frame[gain_loss_columns].copy()
+        results.to_csv(f'data/{run_id}.trading.gain_loss.csv')
+
+        self._colorize_plot(fig, axis)
+        plt.savefig(f'data/{run_id}.chart.png')
+        plt.show()
+        plt.close()
+
+    @classmethod
+    def _get_x_min_max(cls, resulting_frame):
+        x_min = resulting_frame.index.min() - timedelta(days=10)
+        x_max = resulting_frame.index.max() + timedelta(days=10)
+        return x_min, x_max
+
+    @classmethod
+    def _get_y_min_max(cls, resulting_frame, columns, index_column):
+        columns = columns + [index_column]
+        y_min = resulting_frame[columns].values.min() - 10
+        y_max = resulting_frame[columns].values.max() + 10
+        return y_min, y_max
+
+    @classmethod
+    def _colorize_plot(cls, fig, axis):
         text_color = '#cfcfcf'
         rc('font', weight='bold')
         rc('text', color=text_color)
         fig.patch.set_facecolor('#1d1d1d')
-        for current_ax in ax:
-            x_min = resulting_frame.index.min()
-            x_max = resulting_frame.index.max()
-            current_ax.set_xlim(x_min, x_max)
-            current_ax.grid(which='major', axis='both')
-            current_ax.spines['bottom'].set_color(text_color)
-            current_ax.spines['top'].set_color(text_color)
-            current_ax.spines['right'].set_color(text_color)
-            current_ax.spines['left'].set_color(text_color)
-            current_ax.tick_params(axis='both', which='major', colors=text_color, labelsize='large', grid_alpha=0.2)
-            current_ax.set_facecolor('#1f1f1f')
-            current_ax.xaxis.label.set_visible(False)
-            current_ax.yaxis.label.set_visible(False)
-            current_ax.title.set_color(text_color)
-            current_ax.title.set_weight('bold')
-            legend = current_ax.legend(
+        for ax in axis:
+            ax.grid(which='major', axis='both')
+            ax.spines['bottom'].set_color(text_color)
+            ax.spines['top'].set_color(text_color)
+            ax.spines['right'].set_color(text_color)
+            ax.spines['left'].set_color(text_color)
+            ax.tick_params(axis='both', which='major', colors=text_color, labelsize='large', grid_alpha=0.2)
+            ax.set_facecolor('#1f1f1f')
+            ax.xaxis.label.set_visible(False)
+            ax.yaxis.label.set_visible(False)
+            ax.title.set_color(text_color)
+            ax.title.set_weight('bold')
+            legend = ax.legend(
                 facecolor='#333333',
                 framealpha=0.4,
                 ncol=1)
             for text in legend.get_texts():
                 text.set_color(text_color)
-
-        results = resulting_frame[gain_loss_columns].copy()
-        results.to_csv(f'data/{run_id}.trading.gain_loss.csv')
-
-        plt.savefig(f'data/{run_id}.chart.png')
-        plt.show()
-        plt.close()
 
     def _buy_and_hold(
             self,
