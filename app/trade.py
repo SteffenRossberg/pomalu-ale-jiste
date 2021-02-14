@@ -9,8 +9,6 @@ from app.trading.game import Game
 if __name__ != "__main__":
     exit(0)
 
-torch.multiprocessing.set_start_method('spawn')
-
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'

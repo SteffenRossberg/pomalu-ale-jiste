@@ -10,14 +10,14 @@ from app.utility.logger import Logger
 import prometheus_client
 import numpy as np
 
+if __name__ != "__main__":
+    exit(0)
 
 prometheus_client.start_http_server(5000, '0.0.0.0')
 
-# Let's train data of 16 years from 01/01/2000 to 12/31/2015
+# Let's train data of 13 years from 01/01/2000 to 12/31/2012
 train_start_date = '2000-01-01'
 train_end_date = '2012-12-31'
-validation_start_date = '2013-01-01'
-validation_end_date = '2015-12-31'
 train_tickers = None
 
 # Use the last 5 days as a time frame for sampling, forecasting and trading
