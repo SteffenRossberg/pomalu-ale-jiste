@@ -38,10 +38,9 @@ class Gym:
         def output(epoch, step, loss, accuracy, is_saved):
             Gym.print_step(epoch, step, f'{name}.auto.encoder', loss, accuracy, is_saved)
 
-        def calculate_accuracies(x, y):
-            x = x + 0.0000000001
-            ratio = y / x
-            ratio = ratio - 1.0
+        def calculate_accuracies(actual, expected):
+            expected_range_x = expected.max(axis=(2, 3)) - expected.min(axis=(2, 3))
+            ratio = ((actual - expected) / expected_range_x.reshape((expected_range_x.shape[0], 1, 1, 1)))
             ratio = np.abs(ratio)
             mean_ratio = np.mean(ratio, axis=(2, 3))
             mean_ratio = 1.0 - mean_ratio

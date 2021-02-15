@@ -12,13 +12,15 @@ if __name__ != "__main__":
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
 trader_start_date = '2016-01-01'
 trader_end_date = '2020-12-31'
-trade_intra_day = False
 trader_start_capital = 50_000.0
-trader_max_limit_positions = 10  # 35
+trader_max_limit_positions = 5
+trader_buy_and_hold = False
+trader_profit_taking_threshold = 20.0
 trader_order_fee = 1.0
 trader_capital_gains_tax = 25.0
 trader_solidarity_surcharge = 5.5
-trade_tickers = None
+trader_tickers = None
+trader_intra_day = False
 
 # Use the last 5 days as a time frame for sampling, forecasting and trading
 sample_days = 5
@@ -81,14 +83,14 @@ all_quotes, all_tickers = DataPreparator.prepare_all_quotes(
     sample_days,
     trader_start_date,
     trader_end_date,
-    trade_tickers,
-    trade_intra_day)
+    trader_tickers,
+    trader_intra_day)
 
 print("Create game ...")
 game = Game(
     provider,
     trader,
-    len(trade_tickers if trade_tickers is not None else provider.tickers.keys()),
+    len(trader_tickers if trader_tickers is not None else provider.tickers.keys()),
     trader_max_limit_positions,
     all_quotes,
     all_tickers,
@@ -101,4 +103,8 @@ game = Game(
     device,
     sample_days)
 
-game.trade(run_id, trade_intra_day)
+game.trade(
+    run_id,
+    profit_taking_threshold=trader_profit_taking_threshold,
+    buy_and_hold=trader_buy_and_hold,
+    intra_day=trader_intra_day)
