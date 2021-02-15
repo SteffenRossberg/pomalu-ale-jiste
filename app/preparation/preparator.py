@@ -117,14 +117,16 @@ class DataPreparator:
                 # prepare data
                 quotes[['buy', 'sell']] = cls.calculate_signals(quotes)
                 quotes['window'] = cls.calculate_windows(quotes, days=days, normalize=True)
-                buys = cls.filter_windows_by_signal(quotes, 'buy', 'window')
-                sells = cls.filter_windows_by_signal(quotes, 'sell', 'window')
-                none = cls.filter_windows_without_signal(quotes, 'window', days=days)
+                buys = cls.filter_windows_by_signal(quotes, days, 'buy', 'window')
+                sells = cls.filter_windows_by_signal(quotes, days, 'sell', 'window')
+                none = cls.filter_windows_without_signal(quotes, days, 'window')
                 print(f'{ticker:5} - {company:40} - buys: {np.shape(buys)} - sells: {np.shape(sells)}')
-
-                all_buys = buys if all_buys is None else np.concatenate((all_buys, buys))
-                all_sells = sells if all_sells is None else np.concatenate((all_sells, sells))
-                all_none = none if all_none is None else np.concatenate((all_none, none))
+                if len(buys) > 0:
+                    all_buys = buys if all_buys is None else np.concatenate((all_buys, buys))
+                if len(sells) > 0:
+                    all_sells = sells if all_sells is None else np.concatenate((all_sells, sells))
+                if len(none) > 0:
+                    all_none = none if all_none is None else np.concatenate((all_none, none))
 
             print(f'Total: buys: {np.shape(all_buys)} - sells: {np.shape(all_sells)}')
             unique_buys, unique_sells = cls.extract_unique_samples(
@@ -353,14 +355,14 @@ class DataPreparator:
         return ranges
 
     @staticmethod
-    def filter_windows_by_signal(quotes, signal_column, window_column='window'):
-        windows = quotes[quotes[signal_column] > 0][window_column].values
+    def filter_windows_by_signal(quotes, days, signal_column, window_column='window'):
+        windows = quotes[quotes[signal_column] > 0][window_column][days:].values
         windows = windows.tolist()
         windows = np.array(windows, dtype=np.float32)
         return windows
 
     @staticmethod
-    def filter_windows_without_signal(quotes, window_column='window', days=5):
+    def filter_windows_without_signal(quotes, days, window_column='window'):
         non_signal_filter = ~(quotes['buy'] > 0) & ~(quotes['sell'] > 0)
         windows = quotes[non_signal_filter][window_column][days:].values
         windows = windows.tolist()

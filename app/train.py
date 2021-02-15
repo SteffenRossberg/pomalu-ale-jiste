@@ -189,7 +189,7 @@ if args.train_classifier > 0:
         classifier_labels,
         classifier_result,
         max_epochs=500,
-        max_steps=10)
+        max_steps=20)
     print("Reload trader with best training result after training ...")
     classifier_optimizer, seller_result = manager.load(
         'classifier',
