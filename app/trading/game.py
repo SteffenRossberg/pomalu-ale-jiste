@@ -303,7 +303,18 @@ class Game:
     def buy(self, row, investment, portfolio, actions, max_positions):
 
         def action_filter(t):
-            return t not in portfolio and actions[t]['index'] == Actions.Buy
+            if t in portfolio:
+                return False
+            action = actions[t]
+            if action['index'] != Actions.Buy:
+                return False
+            if action['value'] < 0.99:
+                return False
+            if action['predictions'][Actions.SkipOrHold] > 0.5:
+                return False
+            if action['predictions'][Actions.Sell] > 0.5:
+                return False
+            return True
 
         def action_sort(t):
             return actions[t]['value']
