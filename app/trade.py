@@ -17,6 +17,7 @@ trader_max_limit_positions = 5
 trader_buy_and_hold = False
 trader_profit_taking_threshold = 20.0
 trader_order_fee = 1.0
+trader_spread = 0.8
 trader_capital_gains_tax = 25.0
 trader_solidarity_surcharge = 5.5
 trader_tickers = None
@@ -97,6 +98,7 @@ game = Game(
     trader_start_date,
     trader_end_date,
     trader_start_capital,
+    trader_spread,
     trader_order_fee,
     trader_capital_gains_tax,
     trader_solidarity_surcharge,
