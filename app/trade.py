@@ -10,18 +10,18 @@ if __name__ != "__main__":
     exit(0)
 
 # Let's trade unseen data of 5 years from 01/01/2016 to 12/31/2020.
-trader_start_date = '2016-01-01'
-trader_end_date = '2020-12-31'
-trader_start_capital = 50_000.0
-trader_max_limit_positions = 5
-trader_buy_and_hold = False
-trader_profit_taking_threshold = 20.0
-trader_order_fee = 1.0
-trader_spread = 0.8
-trader_capital_gains_tax = 25.0
-trader_solidarity_surcharge = 5.5
-trader_tickers = None
-trader_intra_day = False
+start_date = '2016-01-01'
+end_date = '2020-12-31'
+start_capital = 50_000.0
+max_limit_positions = 5
+buy_and_hold = False
+profit_taking_threshold = 20.0
+order_fee = 1.0
+spread_in_percent = 0.8
+capital_gains_tax_in_percent = 25.0
+solidarity_surcharge_in_percent = 5.5
+tickers = None
+use_intra_day = False
 
 # Use the last 5 days as a time frame for sampling, forecasting and trading
 sample_days = 5
@@ -82,31 +82,31 @@ print("Prepare quotes ...")
 all_quotes, all_tickers = DataPreparator.prepare_all_quotes(
     provider,
     sample_days,
-    trader_start_date,
-    trader_end_date,
-    trader_tickers,
-    trader_intra_day)
+    start_date,
+    end_date,
+    tickers,
+    use_intra_day)
 
 print("Create game ...")
 game = Game(
     provider,
     trader,
-    len(trader_tickers if trader_tickers is not None else provider.tickers.keys()),
-    trader_max_limit_positions,
+    len(tickers if tickers is not None else provider.tickers.keys()),
+    max_limit_positions,
     all_quotes,
     all_tickers,
-    trader_start_date,
-    trader_end_date,
-    trader_start_capital,
-    trader_spread,
-    trader_order_fee,
-    trader_capital_gains_tax,
-    trader_solidarity_surcharge,
+    start_date,
+    end_date,
+    start_capital,
+    spread_in_percent,
+    order_fee,
+    capital_gains_tax_in_percent,
+    solidarity_surcharge_in_percent,
     device,
     sample_days)
 
 game.trade(
     run_id,
-    profit_taking_threshold=trader_profit_taking_threshold,
-    buy_and_hold=trader_buy_and_hold,
-    intra_day=trader_intra_day)
+    profit_taking_threshold=profit_taking_threshold,
+    buy_and_hold=buy_and_hold,
+    intra_day=use_intra_day)
