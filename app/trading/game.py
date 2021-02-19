@@ -21,6 +21,7 @@ class Game:
             start_date,
             end_date,
             capital,
+            spread,
             order_fee,
             capital_gains_tax,
             solidarity_surcharge,
@@ -42,6 +43,7 @@ class Game:
         self.tax_rate = self.capital_gains_tax / 100.0
         self.tax_rate *= self.solidarity_surcharge / 100.0 + 1.0
         self.order_fee = order_fee
+        self.spread = spread / 100.0
 
     def trade(
             self,
@@ -228,7 +230,7 @@ class Game:
             price = row[f'{ticker}_close']
             count = int((investment - self.order_fee) / price)
             if count > 0:
-                buy_price = price
+                buy_price = price * (self.spread + 1.0)
                 investment -= self.order_fee
                 investment -= count * price
                 message = f'Buy & Hold - {row["date"]} - {ticker:5} - buy  '
@@ -301,7 +303,18 @@ class Game:
     def buy(self, row, investment, portfolio, actions, max_positions):
 
         def action_filter(t):
-            return t not in portfolio and actions[t]['index'] == Actions.Buy
+            if t in portfolio:
+                return False
+            action = actions[t]
+            if action['index'] != Actions.Buy:
+                return False
+            if action['value'] < 0.99:
+                return False
+            if action['predictions'][Actions.SkipOrHold] > 0.5:
+                return False
+            if action['predictions'][Actions.Sell] > 0.5:
+                return False
+            return True
 
         def action_sort(t):
             return actions[t]['value']
@@ -313,7 +326,7 @@ class Game:
         tickers = tickers[:possible_position_count]
         possible_investment = investment / possible_position_count
         for ticker in tickers:
-            price = row[f'{ticker}_close']
+            price = row[f'{ticker}_close'] * (self.spread + 1.0)
             if possible_investment < price + self.order_fee:
                 continue
             investment -= self.order_fee
