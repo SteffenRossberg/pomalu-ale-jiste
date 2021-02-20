@@ -47,7 +47,7 @@ The project provides a dashboard to visualize the training process using contain
 
 ## train
 
-1. in terminal navigate to ```pomalu-ale-jiste/src``` path
+1. in terminal navigate to ```pomalu-ale-jiste/app``` path
 1. to train trader from 01/01/2000 to 12/31/2012 run
 ```
 export PYTHONPATH={path to pomalu-ale-jiste root folder}
@@ -62,7 +62,7 @@ python3.8 train.py --apikey={your Tiingo Api-Key} --train_buyer=1 --train_seller
 
 ## trade
 
-1. in terminal navigate to ```pomalu-ale-jiste/src``` path
+1. in terminal navigate to ```pomalu-ale-jiste/app``` path
 1. to test trader from 01/01/2016 to 12/31/2020 run
 ```
 export PYTHONPATH={path to pomalu-ale-jiste root folder}
