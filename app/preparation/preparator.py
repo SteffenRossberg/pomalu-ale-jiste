@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import json
 from imblearn.over_sampling import SMOTE
+from app.environment.dataprovider import DataProvider
 
 
 class DataPreparator:
@@ -11,7 +12,7 @@ class DataPreparator:
     @classmethod
     def prepare_all_quotes(
             cls,
-            provider,
+            provider: DataProvider,
             days=5,
             start_date='2000-01-01',
             end_date='2015-12-31',
@@ -35,13 +36,14 @@ class DataPreparator:
                     quotes = provider.load(ticker, start_date, end_date)
                 if quotes is None:
                     continue
-                quotes[f'{ticker}_window'] = cls.calculate_windows(quotes, days=days, normalize=True)
-                quotes[f'{ticker}_range'] = cls.calculate_ranges(quotes, days=days)
-                quotes[f'{ticker}_last_days'] = cls.calculate_last_days(quotes, days=days, normalize=True)
-                quotes = quotes.rename(columns={
-                    'close': f'{ticker}_close'
-                })
-                columns = ['date', f'{ticker}_window', f'{ticker}_range', f'{ticker}_last_days', f'{ticker}_close']
+                quotes[f'{ticker}_window'] = \
+                    cls.calculate_windows(
+                        quotes,
+                        days=days,
+                        normalize=True,
+                        adjust=provider.adjust_prices)
+                quotes = quotes.rename(columns={'adj_close': f'{ticker}_close'})
+                columns = ['date', f'{ticker}_window', f'{ticker}_close']
                 quotes = quotes[columns].copy()
                 if all_quotes is None:
                     all_quotes = quotes
@@ -168,7 +170,7 @@ class DataPreparator:
 
     @staticmethod
     def calculate_changes(quotes):
-        columns = ['open', 'high', 'low', 'close']
+        columns = ['adj_open', 'adj_high', 'adj_low', 'adj_close']
         return [changes.tolist() for changes in quotes[columns].pct_change(1).values]
 
     @staticmethod
@@ -274,31 +276,31 @@ class DataPreparator:
     def calculate_signals(cls, quotes):
         quotes = quotes.copy()
         quotes['index'] = range(len(quotes))
-        quotes['min'] = quotes['close'].rolling(10, center=True).min()
-        quotes['max'] = quotes['close'].rolling(10, center=True).max()
-        quotes['sell_index'] = quotes.apply(lambda r: r['index'] if r['max'] == r['close'] else np.nan, axis=1)
-        quotes['buy_index'] = quotes.apply(lambda r: r['index'] if r['min'] == r['close'] else np.nan, axis=1)
+        quotes['min'] = quotes['adj_close'].rolling(10, center=True).min()
+        quotes['max'] = quotes['adj_close'].rolling(10, center=True).max()
+        quotes['sell_index'] = quotes.apply(lambda r: r['index'] if r['max'] == r['adj_close'] else np.nan, axis=1)
+        quotes['buy_index'] = quotes.apply(lambda r: r['index'] if r['min'] == r['adj_close'] else np.nan, axis=1)
         cls.fill_na(quotes)
         quotes['sell_index'] = quotes.apply(
             lambda r: (r['index']
-                       if quotes[int(r['sell_start']):int(r['sell_end']) + 1]['close'].max() == r['close']
+                       if quotes[int(r['sell_start']):int(r['sell_end']) + 1]['adj_close'].max() == r['adj_close']
                        else np.nan),
             axis=1)
         quotes['buy_index'] = quotes.apply(
             lambda r: (r['index']
-                       if quotes[int(r['buy_start']):int(r['buy_end']) + 1]['close'].min() == r['close']
+                       if quotes[int(r['buy_start']):int(r['buy_end']) + 1]['adj_close'].min() == r['adj_close']
                        else np.nan),
             axis=1)
         cls.fill_na(quotes)
         quotes['sell'] = quotes.apply(
-            lambda r: (r['close']
-                       if (quotes[int(r['buy_start']):int(r['buy_end']) + 1]['close'].max() == r['close'] and
+            lambda r: (r['adj_close']
+                       if (quotes[int(r['buy_start']):int(r['buy_end']) + 1]['adj_close'].max() == r['adj_close'] and
                            quotes[int(r['buy_start']):int(r['buy_end']) + 1]['sell_index'].max() > 0)
                        else np.nan),
             axis=1)
         quotes['buy'] = quotes.apply(
-            lambda r: (r['close']
-                       if (quotes[int(r['sell_start']):int(r['sell_end']) + 1]['close'].min() == r['close'] and
+            lambda r: (r['adj_close']
+                       if (quotes[int(r['sell_start']):int(r['sell_end']) + 1]['adj_close'].min() == r['adj_close'] and
                            quotes[int(r['sell_start']):int(r['sell_end']) + 1]['buy_index'].max() > 0)
                        else np.nan),
             axis=1)
@@ -324,35 +326,16 @@ class DataPreparator:
         quotes['buy_end'] = quotes['buy_index'].fillna(method='bfill').fillna(quotes['index'].max())
 
     @classmethod
-    def calculate_last_days(cls, quotes, days=5, normalize=True):
-        last_days = cls.calculate_windows(quotes, days, normalize, ['close'])
-        last_days = [window.squeeze().tolist() for window in last_days]
-        return last_days
-
-    @classmethod
-    def calculate_windows(cls, quotes, days=5, normalize=True, columns=None):
-
-        def do_not_normalize(window):
-            return window
-
-        normalize_action = cls.normalize_data if normalize else do_not_normalize
-        if columns is None:
-            columns = ['open', 'high', 'low', 'close']
+    def calculate_windows(cls, quotes, days=5, normalize=True, columns=None, adjust=None):
+        columns = ['adj_open', 'adj_high', 'adj_low', 'adj_close'] if columns is None else columns
+        normalize_data = cls.normalize_data if normalize else (lambda window: window[columns].values)
+        adjust_data = adjust if adjust is not None else (lambda window: window[columns].values)
         quotes = quotes.copy()
         windows = [(np.array([np.zeros((days, len(columns)))], dtype=np.float32)
                     if win.shape[0] < days
-                    else normalize_action(np.array([win.values.tolist()], dtype=np.float32)))
-                   for win in quotes[columns].rolling(days)]
+                    else normalize_data(np.array([adjust_data(win).tolist()], dtype=np.float32)))
+                   for win in quotes.rolling(days)]
         return windows
-
-    @classmethod
-    def calculate_ranges(cls, quotes, days=5, columns=None):
-        if columns is None:
-            columns = ['open', 'high', 'low', 'close']
-        quotes = quotes.copy()
-        ranges = [(win.max() - win.min()) / win.min() * 100.0
-                  for win in quotes[columns].rolling(days)]
-        return ranges
 
     @staticmethod
     def filter_windows_by_signal(quotes, days, signal_column, window_column='window'):
