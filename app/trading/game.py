@@ -110,7 +110,7 @@ class Game:
             data={
                 'index': range(length),
                 'date': np.array(compare_index['date'].values[-length:]),
-                index_title: np.array(compare_index['close'].values[-length:]),
+                index_title: np.array(compare_index['adj_close'].values[-length:]),
                 all_title: np.array(all_investments[-length:]),
                 limit_all_title: np.array(limit_all_investments[-length:]),
                 gain_loss_all_title: np.array(all_gain_loss[-length:]) + self.start_capital,
@@ -439,11 +439,8 @@ class Game:
         for ticker in tickers.keys():
             window = row[f'{ticker}_window']
             if (window is np.nan or
-                    np.isnan(window).any() or
-                    row[f'{ticker}_last_days'] is np.nan or
-                    np.isnan(row[f'{ticker}_last_days']).any() or
                     window is None or
-                    row[f'{ticker}_last_days'] is None or
+                    np.isnan(window).any() or
                     np.sum(window) == 0.0):
                 continue
             day_yield = quotes[f'{ticker}_close'][index] / quotes[f'{ticker}_close'][index - 1] - 1.0
