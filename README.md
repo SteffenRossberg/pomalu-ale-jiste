@@ -43,7 +43,7 @@ The project provides a dashboard to visualize the training process using contain
 
 * subscribe to [Tiingo API](https://api.tiingo.com) to get an API token
 * install [docker](https://docs.docker.com/engine/install/) and [docker-compose](https://docs.docker.com/compose/install/)
-* install requirements using ```pip3 install -r requirements.txt```
+* install requirements using ```pip3 install -r requirements.txt -f https://download.pytorch.org/whl/torch_stable.html```
 
 ## train
 

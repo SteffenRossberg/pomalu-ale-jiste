@@ -1,7 +1,9 @@
 import requests
 import pandas as pd
+import numpy as np
 import os
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 
 class DataProvider:
@@ -147,11 +149,32 @@ class DataProvider:
             quotes = self.__load_from_provider(ticker, start_date, end_date)
             if quotes is None:
                 return None
+            quotes[['adj_open', 'adj_high', 'adj_low', 'adj_close']] = self.adjust_prices(quotes)
             quotes.to_csv(relative_file_path)
         quotes = pd.read_csv(relative_file_path)
         quotes['date'] = pd.to_datetime(quotes['date'], format='%Y-%m-%d')
         quotes.fillna(method='bfill', inplace=True)
         return quotes
+
+    @classmethod
+    def adjust_prices(cls, quotes):
+        factor_quotes = quotes[1:].copy()
+        columns = ['open', 'high', 'low', 'close']
+        adj_factors = ((factor_quotes[columns] + factor_quotes['divCash'].values.reshape((len(factor_quotes), 1))) /
+                       factor_quotes[columns])
+        adj_factors *= factor_quotes['splitFactor'].values.reshape((len(factor_quotes), 1))
+        ns = SimpleNamespace()
+        ns.last_adj_factors = np.ones(len(columns), dtype=np.float32)
+
+        def calculate(i):
+            ns.last_adj_factors *= adj_factors.iloc[i].values
+            return np.array(ns.last_adj_factors, dtype=np.float32)
+
+        result_adj_factors = ([np.ones(len(columns), dtype=np.float32)] +
+                              [calculate(index) for index in range(len(factor_quotes) - 1, -1, -1)])
+        result_adj_factors = [item for item in reversed(result_adj_factors)]
+        results = quotes[columns].values / np.array(result_adj_factors, dtype=np.float32)
+        return results
 
     def load_intra_day(self, ticker, start_date, end_date, enable_cached_data=True):
         relative_file_path = self.__ensure_cache_file_path(ticker, start_date, end_date, True)
@@ -212,7 +235,6 @@ class DataProvider:
         url = f'{self.__eod_url}{ticker}/prices'
         payload = {'startDate': start_date,
                    'endDate': end_date,
-                   'columns': 'date,adjOpen,adjHigh,adjLow,adjClose',
                    'token': self.__api_key}
         raw_json = DataProvider.__request(url, payload)
         return raw_json
@@ -221,7 +243,6 @@ class DataProvider:
         url = f'{self.__intra_day_url}{ticker}/prices'
         payload = {'startDate': self.__format_date(start_date),
                    'endDate': self.__format_date(end_date),
-                   'columns': 'open,high,low,close',
                    'resampleFreq': '5min',
                    'token': self.__api_key}
         raw_json = DataProvider.__request(url, payload)
@@ -247,8 +268,6 @@ class DataProvider:
         quotes = DataProvider.__parse_data(json, ticker)
         if quotes is None:
             return None
-        columns = {'adjClose': 'close', 'adjHigh': 'high', 'adjLow': 'low', 'adjOpen': 'open'}
-        quotes.rename(columns=columns, inplace=True)
         return quotes
 
     @staticmethod
@@ -266,8 +285,14 @@ class DataProvider:
     def __enforce_data_types(quotes):
         if len(quotes) > 0:
             quotes['date'] = pd.to_datetime(quotes['date'], format='%Y-%m-%d')
-            quotes = quotes.astype({'open': 'float', 'high': 'float',
-                                    'low': 'float', 'close': 'float',
+            quotes = quotes.astype({'open': 'float',
+                                    'high': 'float',
+                                    'low': 'float',
+                                    'close': 'float',
+                                    'adjOpen': 'float',
+                                    'adjHigh': 'float',
+                                    'adjLow': 'float',
+                                    'adjClose': 'float',
                                     'date': 'datetime64[ns]'})
         return quotes
 
