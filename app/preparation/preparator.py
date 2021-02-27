@@ -261,9 +261,9 @@ class DataPreparator:
                 compare = None
                 indices = None
                 y_part = y[j:j + (steps if len(y) - j > steps else len(y) - j)]
-                x_part = torch.tensor(x_part).to(device)
-                y_part = torch.transpose(torch.tensor(y_part), 0, 1).to(device)
-                diff = x_part - y_part
+                x_calc = torch.tensor(x_part).to(device)
+                y_calc = torch.transpose(torch.tensor(y_part), 0, 1).to(device)
+                diff = x_calc - y_calc
                 square = diff * diff
                 mse = torch.mean(square, dim=(2, 3))
                 compare = torch.tensor(mse < mse_match_threshold, dtype=torch.bool, device=device)

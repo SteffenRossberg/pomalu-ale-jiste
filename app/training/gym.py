@@ -201,8 +201,8 @@ class Gym:
 
         # train net
         random = torch.randperm(len(train_features))
-        features = torch.tensor(train_features)[random]
-        labels = torch.tensor(train_labels)[random]
+        features = train_features[random]
+        labels = train_labels[random]
         agent.train()
         for start in range(0, len(features), batch_size):
             stop = start + (batch_size if len(features) - start > batch_size else len(features) - start)
@@ -215,8 +215,8 @@ class Gym:
             agent_optimizer.step()
         # validate net
         random = torch.randperm(len(val_features))
-        features = torch.tensor(val_features)[random]
-        labels = torch.tensor(val_labels)[random]
+        features = val_features[random]
+        labels = val_labels[random]
         losses = []
         accuracies = []
         if calculate_accuracies is None:
