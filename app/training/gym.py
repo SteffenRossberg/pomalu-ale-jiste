@@ -215,9 +215,8 @@ class Gym:
             agent_loss.backward()
             agent_optimizer.step()
         # validate net
-        random = torch.randperm(len(val_features))
-        features = val_features[random]
-        labels = val_labels[random]
+        features = val_features
+        labels = val_labels
         losses = []
         accuracies = []
         if calculate_accuracies is None:
