@@ -266,7 +266,7 @@ class DataPreparator:
                 diff = x_calc - y_calc
                 square = diff * diff
                 mse = torch.mean(square, dim=(2, 3))
-                compare = torch.tensor(mse < mse_match_threshold, dtype=torch.bool, device=device)
+                compare = torch.le(mse, mse_match_threshold)
                 indices = torch.nonzero(compare) + torch.tensor([i, j]).to(device)
                 indices = indices.detach().cpu().numpy()
                 all_indices = indices if all_indices is None else np.concatenate((all_indices, indices))
