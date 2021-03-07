@@ -137,6 +137,7 @@ class Gym:
         epoch = 0
         train_features, train_labels, val_features, val_labels = self.split_train_and_val(features, labels, 0.75)
         best_accuracy = 0.0
+        self.manager.init_seed(self.manager.seed, self.manager.deterministic)
         while True:
             epoch += 1
             loss, accuracy = \
@@ -214,9 +215,8 @@ class Gym:
             agent_loss.backward()
             agent_optimizer.step()
         # validate net
-        random = torch.randperm(len(val_features))
-        features = val_features[random]
-        labels = val_labels[random]
+        features = val_features
+        labels = val_labels
         losses = []
         accuracies = []
         if calculate_accuracies is None:
