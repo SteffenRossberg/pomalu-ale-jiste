@@ -21,7 +21,7 @@ spread_in_percent = 0.8
 capital_gains_tax_in_percent = 25.0
 solidarity_surcharge_in_percent = 5.5
 tickers = ['AAPL', 'ADBE', 'AMD', 'AMZN', 'ATVI', 'BIDU', 'CRM', 'EA', 'EBAY', 'FB', 'IBM', 'MSFT', 'NFLX',
-           'NVDA', 'ORCL', 'PYPL', 'QCOM', 'SONY', 'TWTR', 'VRSN']
+           'NVDA', 'ORCL', 'PYPL', 'QCOM', 'SNE', 'TWTR', 'VRSN']
 use_intra_day = False
 
 # Use the last 5 days as a time frame for sampling, forecasting and trading
