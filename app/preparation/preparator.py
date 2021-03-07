@@ -26,6 +26,7 @@ class DataPreparator:
         if not os.path.exists(quotes_path):
             all_quotes = None
             all_tickers = {}
+            columns = ['open', 'high', 'low', 'close']
             tickers = tickers if tickers is not None else provider.tickers.keys()
             for ticker in tickers:
                 company = provider.tickers[ticker]
@@ -41,6 +42,7 @@ class DataPreparator:
                         quotes,
                         days=days,
                         normalize=True,
+                        columns=columns,
                         adjust=provider.adjust_prices)
                 quotes = quotes.rename(columns={'adj_close': f'{ticker}_close'})
                 columns = ['date', f'{ticker}_window', f'{ticker}_close']
@@ -107,6 +109,7 @@ class DataPreparator:
         all_buys = None
         all_sells = None
         all_none = None
+        columns = ['open', 'high', 'low', 'close']
         samples_path = f'data/eod/{start_date}.{end_date}/samples.npz'
         if not os.path.exists(samples_path):
             tickers = tickers if tickers is not None else provider.tickers.keys()
@@ -118,7 +121,13 @@ class DataPreparator:
                     continue
                 # prepare data
                 quotes[['buy', 'sell']] = cls.calculate_signals(quotes)
-                quotes['window'] = cls.calculate_windows(quotes, days=days, normalize=True)
+                quotes['window'] = \
+                    cls.calculate_windows(
+                        quotes,
+                        days=days,
+                        normalize=True,
+                        columns=columns,
+                        adjust=provider.adjust_prices)
                 buys = cls.filter_windows_by_signal(quotes, days, 'buy', 'window')
                 sells = cls.filter_windows_by_signal(quotes, days, 'sell', 'window')
                 none = cls.filter_windows_without_signal(quotes, days, 'window')

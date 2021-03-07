@@ -122,7 +122,6 @@ Logger.log(run_id, f"Id: {run_id}")
 
 if args.train_buyer > 0:
     buyer_features = np.array(buy_samples, dtype=np.float32)
-    manager.init_seed(seed, deterministic)
     print("Train buyer samples detector ...")
     buyer_result = gym.train_auto_encoder(
         'buyer',
@@ -144,7 +143,6 @@ if args.train_buyer > 0:
 
 if args.train_seller > 0:
     seller_features = np.array(sell_samples, dtype=np.float32)
-    manager.init_seed(seed, deterministic)
     print("Train seller samples detector ...")
     seller_result = gym.train_auto_encoder(
         'seller',
@@ -179,7 +177,6 @@ if args.train_classifier > 0:
             classifier_labels.append(0)
     classifier_features = np.array(classifier_features, dtype=np.float32)
     classifier_labels = np.array(classifier_labels, dtype=np.int)
-    manager.init_seed(seed, deterministic)
     print("Train classifier ...")
     classifier_result = gym.train_classifier(
         'classifier',
