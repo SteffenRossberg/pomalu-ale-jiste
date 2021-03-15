@@ -273,9 +273,8 @@ class Game:
         investments = []
         gain_loss = []
         total_gain_loss = 0.0
-
+        actions = None
         for index, row in quotes.iterrows():
-            actions = self.calculate_actions(tickers, portfolio, quotes, row, index)
             if actions is not None:
                 self.update_last_prices(row, portfolio)
                 if buy_and_hold:
@@ -289,6 +288,7 @@ class Game:
             new_investment = self.calculate_current_investment(investment, portfolio, row)
             investments.append(new_investment)
             gain_loss.append(total_gain_loss)
+            actions = self.calculate_actions(tickers, portfolio, quotes, row, index)
 
         investment = self.start_capital + total_gain_loss
         investments.append(investment)
