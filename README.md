@@ -1,4 +1,4 @@
-![pomalu-ale-jiste](docs/logo.128x128.png) 
+![pomalu-ale-jiste](docs/logo.down.128x128.png) 
 # pomalu, ale jistĕ ...
 
 ... I want to play with an AI that uses the PyTorch framework to
