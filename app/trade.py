@@ -15,12 +15,13 @@ end_date = '2020-12-31'
 start_capital = 50_000.0
 max_limit_positions = 5
 buy_and_hold = False
-profit_taking_threshold = 20.0
+profit_taking_threshold = 0
 order_fee = 1.0
 spread_in_percent = 0.8
 capital_gains_tax_in_percent = 25.0
 solidarity_surcharge_in_percent = 5.5
-tickers = None
+tickers = ['AAPL', 'ADBE', 'AMD', 'AMZN', 'ATVI', 'BIDU', 'CRM', 'EA', 'EBAY', 'FB', 'IBM', 'MSFT', 'NFLX',
+           'NVDA', 'ORCL', 'PYPL', 'QCOM', 'SNE', 'TWTR', 'VRSN']
 use_intra_day = False
 
 # Use the last 5 days as a time frame for sampling, forecasting and trading
@@ -94,7 +95,7 @@ game = Game(
     len(tickers if tickers is not None else provider.tickers.keys()),
     max_limit_positions,
     all_quotes,
-    all_tickers,
+    tickers,
     start_date,
     end_date,
     start_capital,
