@@ -1,11 +1,9 @@
-![pomalu-ale-jiste](docs/logo.down.128x128.png) 
 # pomalu, ale jistĕ ...
 
+![pomalu-ale-jiste](docs/logo.down.128x128.png) 
 ... I want to play with an AI that uses the PyTorch framework to
-chew through some time series like stock prices.
+chew through some stock price time series data.
 
-![pomalu-ale-jiste](docs/Trader.vs.MSCI.World.ETF.png)
-* taken from pomalu-ale-jiste v0.0.7 pre-release
 
 ## my way I will go ...
 
@@ -21,6 +19,9 @@ the training data on other unknown test data.
 
 The results will DEFINITELY be BAD, but perhaps the results will surprise.
 I don't know!
+
+![pomalu-ale-jiste](docs/Trader.vs.MSCI.World.ETF.png)
+* taken from pomalu-ale-jiste v0.0.7 pre-release
 
 ## the data ...
 
