@@ -1,9 +1,10 @@
 # pomalu, ale jistĕ ...
 
-![pomalu-ale-jiste](docs/logo.down.128x128.png) 
+
+![pomalu-ale-jiste](docs/logo.down.128x128.png)
+
 ... I want to play with an AI that uses the PyTorch framework to
 chew through some stock price time series data.
-
 
 ## my way I will go ...
 
