@@ -157,9 +157,9 @@ class DataProvider:
         return quotes
 
     @classmethod
-    def adjust_prices(cls, quotes):
+    def adjust_prices(cls, quotes, columns=None):
         factor_quotes = quotes[1:].copy()
-        columns = ['open', 'high', 'low', 'close']
+        columns = ['open', 'high', 'low', 'close'] if columns is None else columns
         adj_factors = ((factor_quotes[columns] + factor_quotes['divCash'].values.reshape((len(factor_quotes), 1))) /
                        factor_quotes[columns])
         adj_factors *= factor_quotes['splitFactor'].values.reshape((len(factor_quotes), 1))

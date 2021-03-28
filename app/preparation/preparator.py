@@ -338,7 +338,9 @@ class DataPreparator:
     def calculate_windows(cls, quotes, days=5, normalize=True, columns=None, adjust=None):
         columns = ['adj_open', 'adj_high', 'adj_low', 'adj_close'] if columns is None else columns
         normalize_data = cls.normalize_data if normalize else (lambda window: window[columns].values)
-        adjust_data = adjust if adjust is not None else (lambda window: window[columns].values)
+        adjust_data = ((lambda window: adjust(window, columns))
+                       if adjust is not None
+                       else (lambda window: window[columns].values))
         quotes = quotes.copy()
         windows = [(np.array([np.zeros((days, len(columns)))], dtype=np.float32)
                     if win.shape[0] < days
