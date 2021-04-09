@@ -16,7 +16,7 @@ class Trader(nn.Module):
 
     def forward(self, features):
         encoder_features = features[:, :features.shape[1] - self.state_size]
-        encoder_features = encoder_features.view((features.shape[0], 1, self.days, 4))
+        encoder_features = encoder_features.view((features.shape[0], 1, 4, self.days))
         encoder_features = encoder_features.to(features.device)
 
         # run auto encoders
@@ -40,8 +40,8 @@ class Trader(nn.Module):
         return prediction
 
     def _create_auto_encoder(self):
-        encoder = Encoder(input_shape=(self.days, 4), output_size=self.days)
-        decoder = Decoder(input_size=self.days, output_shape=(self.days, 4))
+        encoder = Encoder(input_shape=(4, self.days), output_size=self.days)
+        decoder = Decoder(input_size=self.days, output_shape=(4, self.days))
         auto_encoder = AutoEncoder(encoder, decoder)
         return auto_encoder
 
