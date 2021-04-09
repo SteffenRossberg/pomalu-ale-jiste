@@ -46,7 +46,7 @@ class DataProvider:
                 'KO': 'CocaCola Company',
                 'CL': 'ColgatePalmolive Company',
                 'DE': 'Deere Company',
-                'DOW': 'Dow Inc',
+                # 'DOW': 'Dow Inc',
                 'EBAY': 'eBay Inc.',
                 'EIX': 'Edison International',
                 'EA': 'Electronic Arts Inc',
@@ -96,10 +96,10 @@ class DataProvider:
                 'CRM': 'Salesforce.com Inc',
                 'STX': 'Seagate Technology PLC',
                 'SLB': 'Schlumberger Ltd',
-                'WORK': 'Slack Technologies',
-                'SNAP': 'Snap Inc',
+                # 'WORK': 'Slack Technologies',
+                # 'SNAP': 'Snap Inc',
                 'SNE': 'Sony Corporation',
-                'S': 'Sprint Corp',
+                # 'S': 'Sprint Corp',
                 'SBUX': 'Starbucks Corp',
                 'TGT': 'Target Corp',
                 'TSLA': 'Tesla Motors Inc',
@@ -275,7 +275,7 @@ class DataProvider:
         if json is None or len(json) == 0:
             print(f'{ticker:5} - NO DATA')
             return None
-        if 'detail' in json and 'Error' in json['detail']:
+        if 'detail' in json:
             print(json['detail'])
             return None
         quotes = pd.DataFrame.from_dict(json)
