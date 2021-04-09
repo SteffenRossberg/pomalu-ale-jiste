@@ -38,15 +38,15 @@ class DataPreparator:
                 if quotes is None:
                     continue
                 quotes[f'{ticker}_window'] = \
-                    cls.calculate_windows(
+                    cls.calculate_windows_with_range(
                         quotes,
                         days=days,
                         normalize=True,
                         columns=columns,
                         adjust=provider.adjust_prices)
                 quotes = quotes.rename(columns={'adj_close': f'{ticker}_close'})
-                columns = ['date', f'{ticker}_window', f'{ticker}_close']
-                quotes = quotes[columns].copy()
+                ticker_columns = ['date', f'{ticker}_window', f'{ticker}_close']
+                quotes = quotes[ticker_columns].copy()
                 if all_quotes is None:
                     all_quotes = quotes
                 else:
@@ -122,7 +122,7 @@ class DataPreparator:
                 # prepare data
                 quotes[['buy', 'sell']] = cls.calculate_signals(quotes)
                 quotes['window'] = \
-                    cls.calculate_windows(
+                    cls.calculate_windows_with_range(
                         quotes,
                         days=days,
                         normalize=True,
@@ -210,15 +210,6 @@ class DataPreparator:
                                   if sampled_labels[i] == 0],
                                  dtype=np.float32)
         return sampled_buys, sampled_sells, sampled_nones
-
-    @staticmethod
-    def normalize_data(data):
-        max_value = data.max()
-        min_value = data.min()
-        data = ((data - min_value) / (max_value - min_value)
-                if max_value - min_value != 0.0
-                else np.zeros(data.shape, dtype=np.float32))
-        return data
 
     @staticmethod
     def calculate_mse(x, y):
@@ -336,17 +327,52 @@ class DataPreparator:
 
     @classmethod
     def calculate_windows(cls, quotes, days=5, normalize=True, columns=None, adjust=None):
-        columns = ['adj_open', 'adj_high', 'adj_low', 'adj_close'] if columns is None else columns
         normalize_data = cls.normalize_data if normalize else (lambda window: window[columns].values)
         adjust_data = ((lambda window: adjust(window, columns))
                        if adjust is not None
                        else (lambda window: window[columns].values))
+        return cls._calculate_windows(quotes, days, normalize_data, adjust_data, columns)
+
+    @classmethod
+    def calculate_windows_with_range(cls, quotes, days=5, normalize=True, columns=None, adjust=None):
+        normalize_data = (cls.normalize_data_per_column
+                          if normalize
+                          else (lambda window: window[columns].values))
+        adjust_data = ((lambda window: adjust(window, columns))
+                       if adjust is not None
+                       else (lambda window: window[columns].values))
+        return cls._calculate_windows(quotes, days, normalize_data, adjust_data, columns)
+
+    @classmethod
+    def _calculate_windows(cls, quotes, days, normalize_data, adjust_data, columns):
+        columns = ['adj_open', 'adj_high', 'adj_low', 'adj_close'] if columns is None else columns
         quotes = quotes.copy()
-        windows = [(np.array([np.zeros((days, len(columns)))], dtype=np.float32)
+        windows = [(np.array([np.zeros((len(columns), days))], dtype=np.float32)
                     if win.shape[0] < days
                     else normalize_data(np.array([adjust_data(win).tolist()], dtype=np.float32)))
                    for win in quotes.rolling(days)]
         return windows
+
+    @staticmethod
+    def normalize_data(data):
+        data = np.swapaxes(data, 1, 2)
+        max_value = data.max() * 1.0001
+        min_value = data.min() * 0.9999
+        data = ((data - min_value) / (max_value - min_value)
+                if max_value - min_value != 0.0
+                else np.zeros(data.shape, dtype=np.float32))
+        return data
+
+    @staticmethod
+    def normalize_data_per_column(data):
+        column_count = data.shape[2]
+        data = np.swapaxes(data, 1, 2)
+        max_value = (data.max(axis=2) * 1.0001).reshape((1, column_count, 1))
+        min_value = (data.min(axis=2) * 0.9999).reshape((1, column_count, 1))
+        value_range = (max_value - min_value)
+        data = data - min_value
+        data = data / value_range
+        return np.array(data, dtype=np.float32)
 
     @staticmethod
     def filter_windows_by_signal(quotes, days, signal_column, window_column='window'):
@@ -356,8 +382,15 @@ class DataPreparator:
         return windows
 
     @staticmethod
-    def filter_windows_without_signal(quotes, days, window_column='window'):
-        non_signal_filter = ~(quotes['buy'] > 0) & ~(quotes['sell'] > 0)
+    def filter_windows_without_signal(quotes, days, window_column='window', ignore_signals=None):
+        if ignore_signals is None:
+            ignore_signals = ['buy', 'sell']
+        non_signal_filter = None
+        for ignore_signal in ignore_signals:
+            if non_signal_filter is None:
+                non_signal_filter = ~(quotes[ignore_signal] > 0)
+            else:
+                non_signal_filter = non_signal_filter & ~(quotes[ignore_signal] > 0)
         windows = quotes[non_signal_filter][window_column][days:].values
         windows = windows.tolist()
         windows = np.array(windows, dtype=np.float32)
