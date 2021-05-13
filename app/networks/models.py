@@ -2,6 +2,7 @@ import torch
 from torch import nn as nn
 from typing import Any
 from collections import OrderedDict
+import pandas as pd
 
 
 class Trader(nn.Module):
@@ -247,12 +248,163 @@ class Decoder(nn.Module):
         pass
 
 
+class View(nn.Module):
+    def __init__(self, shape):
+        super().__init__()
+        self.shape = [1] + [dimension for dimension in shape]
+
+    def forward(self, x):
+        self.shape[0] = x.shape[0]
+        return x.view(*self.shape)
+
+
+class TrainableModel(nn.Module):
+    def __init__(self, loss_function):
+        super(TrainableModel, self).__init__()
+        self.loss_function = loss_function
+        self.optimizer = None
+        self.counter = 0
+        self.progress = []
+
+    def _train_step(self, outputs, targets):
+        loss = self.loss_function(outputs, targets)
+        self.counter += 1
+        if self.counter % 10 == 0:
+            self.progress.append(loss.item())
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+    def plot_progress(self):
+        df = pd.DataFrame(self.progress, columns=['loss'])
+        df.plot(ylim=0, figsize=(16, 8), alpha=0.3, marker='.', grid=True, yticks=(0, 0.025, 0.05, 0.1, 0.2))
+
+
+class AutoEncoder2(TrainableModel):
+    def __init__(self):
+        super(AutoEncoder2, self).__init__(nn.MSELoss())
+        self.encoder = nn.Sequential(
+            nn.Conv2d(1, 30, kernel_size=2, stride=1),
+            nn.Dropout(0.2),
+            nn.BatchNorm2d(30),
+            nn.LeakyReLU(),
+
+            nn.Conv2d(30, 50, kernel_size=2, stride=1),
+            nn.Dropout(0.2),
+            nn.BatchNorm2d(50),
+            nn.LeakyReLU(),
+
+            nn.Conv2d(50, 50, kernel_size=2, stride=1),
+            nn.Dropout(0.2),
+            nn.LeakyReLU(),
+
+            View([50 * 1 * 2]),
+            nn.Linear(50 * 1 * 2, 10),
+            nn.Sigmoid()
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(10, 50 * 1 * 2),
+            nn.LeakyReLU(),
+
+            View([50, 1, 2]),
+
+            nn.ConvTranspose2d(50, 50, kernel_size=2, stride=1),
+            nn.Dropout(0.2),
+            nn.BatchNorm2d(50),
+            nn.LeakyReLU(),
+
+            nn.ConvTranspose2d(50, 30, kernel_size=2, stride=1),
+            nn.Dropout(0.2),
+            nn.BatchNorm2d(30),
+            nn.LeakyReLU(),
+
+            nn.ConvTranspose2d(30, 1, kernel_size=2, stride=1),
+            nn.Dropout(0.2),
+            nn.BatchNorm2d(1),
+
+            nn.Sigmoid()
+        )
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=0.0001)
+
+    def forward(self, inputs):
+        encoded = self.encoder(inputs)
+        decoded = self.decoder(encoded)
+        return decoded
+
+    def train_net(self, inputs, targets):
+        outputs = self(inputs)
+        self._train_step(outputs, targets)
+
+
+class Classifier2(TrainableModel):
+
+    def __init__(self):
+        super(Classifier2, self).__init__(nn.CrossEntropyLoss())
+        self._classifier = nn.Sequential(
+            nn.Conv2d(2, 30, kernel_size=2, stride=1),
+            nn.Dropout(0.2),
+            nn.BatchNorm2d(30),
+            nn.LeakyReLU(),
+
+            nn.Conv2d(30, 60, kernel_size=2, stride=1),
+            nn.Dropout(0.2),
+            nn.BatchNorm2d(60),
+            nn.LeakyReLU(),
+
+            nn.Conv2d(60, 60, kernel_size=2, stride=1),
+            nn.Dropout(0.2),
+            nn.LeakyReLU(),
+
+            View([60 * 2 * 1]),
+            nn.Linear(60 * 2 * 1, 3),
+            nn.Sigmoid()
+        )
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=0.0001)
+
+    def forward(self, inputs):
+        return self._classifier(inputs)
+
+    def train_net(self, auto_encoder, inputs, targets):
+        decoded = auto_encoder(inputs)
+        features = torch.cat([inputs, decoded], dim=1)
+        outputs = self(features.detach())
+        self._train_step(outputs, targets)
+
+
+class Trader2(nn.Module):
+
+    def __init__(self, auto_encoder: AutoEncoder2, classifier: Classifier2):
+        super(Trader2, self).__init__()
+        self._auto_encoder = auto_encoder
+        self._classifier = classifier
+        self.state_size = 2
+        self.days = 5
+
+    def forward(self, inputs):
+        encoder_features = inputs[:, :inputs.shape[1] - self.state_size]
+        encoder_features = encoder_features.view((inputs.shape[0], 1, 4, self.days))
+        inputs = encoder_features.to(inputs.device)
+
+        decoded = self._auto_encoder(inputs)
+        features = torch.cat([inputs, decoded], dim=1)
+        outputs = self._classifier(features.detach())
+        return outputs
+
+
 class ConvolutionHelper:
 
-    @staticmethod
-    def calc_2d_size(shape, kernel, stride=(1, 1), padding=(0, 0), dilation=(1, 1)):
-        height = ConvolutionHelper.calc_1d_size(shape[0], kernel[0], stride[0], padding[0], dilation[0])
-        width = ConvolutionHelper.calc_1d_size(shape[1], kernel[1], stride[1], padding[1], dilation[1])
+    @classmethod
+    def calc_2d_size(cls, shape, kernel, stride=(1, 1), padding=(0, 0), dilation=(1, 1)):
+        return cls._calculate(shape, kernel, stride, padding, dilation, callback=cls.calc_1d_size)
+
+    @classmethod
+    def calc_2d_transpose_size(cls, shape, kernel, stride=(1, 1), padding=(0, 0), dilation=(1, 1)):
+        return cls._calculate(shape, kernel, stride, padding, dilation, callback=cls.calc_1d_transpose_size)
+
+    @classmethod
+    def _calculate(cls, shape, kernel, stride, padding, dilation, callback):
+        height = callback(shape[0], kernel[0], stride[0], padding[0], dilation[0])
+        width = callback(shape[1], kernel[1], stride[1], padding[1], dilation[1])
         return height, width
 
     @staticmethod
@@ -260,6 +412,12 @@ class ConvolutionHelper:
         padding *= 2
         kernel = dilation * (kernel - 1)
         return int(((size + padding - kernel - 1) / stride) + 1)
+
+    @staticmethod
+    def calc_1d_transpose_size(size, kernel, stride=1, padding=0, dilation=1):
+        padding *= 2
+        kernel = dilation * (kernel - 1)
+        return int(((size - 1) * stride) + 1 + kernel - padding)
 
 
 class NetHelper:

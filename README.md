@@ -59,7 +59,7 @@ python3.8 train.py --apikey={your Tiingo Api-Key} --train_buyer=1 --train_seller
 
 ### view graphs of training process
 1. in terminal navigate to ```pomalu-ale-jiste/docker``` path
-1. start docker containers using ```docker-compose up```
+1. start docker containers using ```export TIINGO_API_KEY={your Tiingo Api-Key}; docker-compose up```
 1. open [http://localhost:3000](http://localhost:3000) in your favorite browser (initial user and password are ```admin```)
 1. navigate to ```pomalu, ale jistĕ``` dashboard
 

@@ -3,7 +3,7 @@ import numpy as np
 from torch import nn as nn
 from prometheus_client import Gauge
 from app.networks.manager import NetManager
-from app.networks.models import TrainClassifier, AutoEncoder
+from app.networks.models import TrainClassifier, AutoEncoder, AutoEncoder2, Classifier2
 
 
 class Gym:
@@ -19,6 +19,122 @@ class Gym:
                 name,
                 description)
         return self.gauges[name]
+
+    @classmethod
+    def calculate_accuracies(cls, actual, expected):
+        expected_range_x = expected.max(axis=(2, 3)) - expected.min(axis=(2, 3))
+        ratio = ((actual - expected) / expected_range_x.reshape((expected_range_x.shape[0], 1, 1, 1)))
+        ratio = np.abs(ratio)
+        mean_ratio = np.mean(ratio, axis=(2, 3))
+        mean_ratio = 1.0 - mean_ratio
+        accuracies = np.where((mean_ratio < 0.0) | (mean_ratio > 1.0), 0.0, mean_ratio)
+        accuracies = accuracies.flatten()
+        return accuracies
+
+    def train_auto_encoder2(
+            self,
+            name,
+            auto_encoder: AutoEncoder2,
+            features,
+            max_epochs=200,
+            batch_size=5000):
+
+        def save(manager: NetManager, loss):
+            manager.save_net(name, auto_encoder)
+            manager.save_optimizer(name, auto_encoder.optimizer, loss)
+
+        def output(e, accuracy, is_saved):
+            Gym.print_step(e, 0, f'{name}.auto.encoder2', 0.0, accuracy, is_saved)
+
+        train_features, train_labels, val_features, val_labels = self.split_train_and_val(features, features, 0.75)
+
+        for epoch in range(max_epochs):
+            # train
+            train_features, train_labels = self.shuffle(train_features, train_labels)
+            auto_encoder.train()
+            for index in range(0, len(train_features), batch_size):
+                count = batch_size if index + batch_size < len(train_features) else len(train_features) - index
+                if not count > 0:
+                    break
+                features = train_features[index:index + count]
+                labels = train_labels[index:index + count]
+                auto_encoder.train_net(features, labels)
+            # evaluate
+            val_features, val_labels = self.shuffle(val_features, val_labels)
+            auto_encoder.eval()
+            accuracies = []
+            for index in range(0, len(val_features), batch_size):
+                count = batch_size if index + batch_size < len(val_features) else len(val_features) - index
+                if not count > 0:
+                    break
+                features = val_features[index:index + count]
+                labels = val_labels[index:index + count].detach().cpu().numpy()
+                prediction = auto_encoder(features).detach().cpu().numpy()
+                accuracies += self.calculate_accuracies(prediction, labels).flatten().tolist()
+            mean_accuracy = np.mean(accuracies) * 100.0
+            output(epoch, mean_accuracy, False)
+
+        save(self.manager, 1.0)
+
+    def train_classifier2(
+            self,
+            name,
+            classifier: Classifier2,
+            auto_encoder: AutoEncoder2,
+            features,
+            labels,
+            max_epochs=200,
+            batch_size=5000):
+
+        def save(manager: NetManager, loss):
+            manager.save_net(name, classifier)
+            manager.save_optimizer(name, classifier.optimizer, loss)
+
+        def output(e, accuracy, is_saved):
+            Gym.print_step(e, 0, f'{name}.classifier2', 0.0, accuracy, is_saved)
+
+        def calculate_accuracies(actual, expected):
+            actual = np.argmax(actual, axis=-1)
+            return np.sum([1 if actual[i] == expected[i] else 0 for i in range(len(actual))]) / len(actual)
+
+        train_features, train_labels, val_features, val_labels = self.split_train_and_val(features, labels, 0.75)
+
+        for epoch in range(max_epochs):
+            # train
+            train_features, train_labels = self.shuffle(train_features, train_labels)
+            classifier.train()
+            for index in range(0, len(train_features), batch_size):
+                count = batch_size if index + batch_size < len(train_features) else len(train_features) - index
+                if not count > 0:
+                    break
+                features = train_features[index:index + count]
+                labels = train_labels[index:index + count]
+                classifier.train_net(auto_encoder, features, labels)
+            # evaluate
+            val_features, val_labels = self.shuffle(val_features, val_labels)
+            classifier.eval()
+            accuracies = []
+            for index in range(0, len(val_features), batch_size):
+                count = batch_size if index + batch_size < len(val_features) else len(val_features) - index
+                if not count > 0:
+                    break
+                features = val_features[index:index + count]
+                decoded = auto_encoder(features)
+                features = torch.cat([features, decoded], dim=1)
+                prediction = classifier(features.detach()).detach().cpu().numpy()
+                labels = val_labels[index:index + count].detach().cpu().numpy()
+                accuracies += calculate_accuracies(prediction, labels).flatten().tolist()
+            mean_accuracy = np.mean(accuracies) * 100.0
+            output(epoch, mean_accuracy, False)
+
+        save(self.manager, 1.0)
+
+    @classmethod
+    def shuffle(cls, features, labels):
+        random = torch.randperm(len(features))
+        features = features[random]
+        labels = labels[random]
+        return features, labels
 
     def train_auto_encoder(
             self,
@@ -38,16 +154,6 @@ class Gym:
         def output(epoch, step, loss, accuracy, is_saved):
             Gym.print_step(epoch, step, f'{name}.auto.encoder', loss, accuracy, is_saved)
 
-        def calculate_accuracies(actual, expected):
-            expected_range_x = expected.max(axis=(2, 3)) - expected.min(axis=(2, 3))
-            ratio = ((actual - expected) / expected_range_x.reshape((expected_range_x.shape[0], 1, 1, 1)))
-            ratio = np.abs(ratio)
-            mean_ratio = np.mean(ratio, axis=(2, 3))
-            mean_ratio = 1.0 - mean_ratio
-            accuracies = np.where((mean_ratio < 0.0) | (mean_ratio > 1.0), 0.0, mean_ratio)
-            accuracies = accuracies.flatten()
-            return accuracies
-
         objective = nn.MSELoss()
         return self.train(
             name,
@@ -62,7 +168,7 @@ class Gym:
             batch_size,
             save,
             output,
-            calculate_accuracies=calculate_accuracies)
+            calculate_accuracies=self.calculate_accuracies)
 
     def train_classifier(
             self,
@@ -173,10 +279,9 @@ class Gym:
             if max_epochs is not None and epoch >= max_epochs:
                 return result
 
-    @staticmethod
-    def split_train_and_val(features, labels, rate=0.75):
-        features = torch.tensor(features)
-        labels = torch.tensor(labels)
+    def split_train_and_val(self, features, labels, rate=0.75):
+        features = torch.tensor(features).to(self.device)
+        labels = torch.tensor(labels).to(self.device)
         train_count = int(features.shape[0] * rate)
         train_features = features[:train_count]
         train_labels = labels[:train_count]
@@ -201,9 +306,7 @@ class Gym:
             return 0.0
 
         # train net
-        random = torch.randperm(len(train_features))
-        features = train_features[random]
-        labels = train_labels[random]
+        features, labels = self.shuffle(train_features, train_labels)
         agent.train()
         for start in range(0, len(features), batch_size):
             stop = start + (batch_size if len(features) - start > batch_size else len(features) - start)

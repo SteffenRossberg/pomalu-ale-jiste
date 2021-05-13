@@ -21,6 +21,19 @@ services:
         volumes:
             - "./grafana/dashboards:/var/lib/grafana/dashboards"
             - "./grafana/provisioning:/etc/grafana/provisioning"
+            - "./grafana/grafana.ini:/etc/grafana/grafana.ini:ro"
+        networks:
+            - pomalu.ale.jiste
+
+    pomalu.ale.jiste.metrics:
+        container_name: pomalu.ale.jiste.metrics
+        build:
+            dockerfile: Dockerfile
+            context: ./metrics
+        volumes:
+            - "./metrics/app:/app"
+        environment:
+            - TIINGO_API_KEY=$TIINGO_API_KEY
         networks:
             - pomalu.ale.jiste
 
