@@ -41,6 +41,8 @@ services:
             dockerfile: Dockerfile
             context: ./metrics
         restart: always
+        ports:
+            - "5000:5000"
         volumes:
             - "./metrics/app:/app"
             - "./metrics/data:/data"
