@@ -51,6 +51,7 @@ def on_message(ws, message):
     _logger.info(f'{last_data}')
     file = ticker_files[ticker]
     file.write(f"\n{json.dumps(last_data)}")
+    file.flush()
     pass
 
 
