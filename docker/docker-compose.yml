@@ -5,16 +5,22 @@ services:
     pomalu.ale.jiste.prometheus:
         container_name: pomalu.ale.jiste.prometheus
         image: prom/prometheus:latest
+        restart: always
         ports:
             - "9090:9090"
         volumes:
             - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
         networks:
             - pomalu.ale.jiste
+        logging:
+            options:
+                max-size: "1M"
+                max-file: "5"
 
     pomalu.ale.jiste.grafana:
         container_name: pomalu.ale.jiste.grafana
         image: grafana/grafana:latest
+        restart: always
         ports:
             - "3000:3000"
         user: "472"
@@ -24,18 +30,28 @@ services:
             - "./grafana/grafana.ini:/etc/grafana/grafana.ini:ro"
         networks:
             - pomalu.ale.jiste
+        logging:
+            options:
+                max-size: "1M"
+                max-file: "5"
 
     pomalu.ale.jiste.metrics:
         container_name: pomalu.ale.jiste.metrics
         build:
             dockerfile: Dockerfile
             context: ./metrics
+        restart: always
         volumes:
             - "./metrics/app:/app"
+            - "./metrics/data:/data"
         environment:
             - TIINGO_API_KEY=$TIINGO_API_KEY
         networks:
             - pomalu.ale.jiste
+        logging:
+            options:
+                max-size: "1M"
+                max-file: "5"
 
 networks:
     pomalu.ale.jiste:
