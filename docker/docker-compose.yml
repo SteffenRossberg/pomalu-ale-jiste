@@ -6,10 +6,12 @@ services:
         container_name: pomalu.ale.jiste.prometheus
         image: prom/prometheus:latest
         restart: always
+        user: "1001:1001"
         ports:
             - "9090:9090"
         volumes:
-            - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+            - "./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"
+            - "./prometheus/data:/prometheus"
         networks:
             - pomalu.ale.jiste
         logging:
@@ -41,8 +43,9 @@ services:
             dockerfile: Dockerfile
             context: ./metrics
         restart: always
+        user: "1001:1001"
         ports:
-            - "5000:5000"
+            - "5001:5001"
         volumes:
             - "./metrics/app:/app"
             - "./metrics/data:/data"
