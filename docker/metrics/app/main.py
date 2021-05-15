@@ -3,14 +3,13 @@ from prometheus_client import Gauge
 import simplejson as json
 import os
 import websocket
-import ssl
 import logging
 
 
 def on_open(ws):
     global api_key, tickers, _logger, ticker_files
     ticker_files = {ticker: create_file(ticker) for ticker in tickers.keys()}
-    prometheus_client.start_http_server(5000, '0.0.0.0')
+    prometheus_client.start_http_server(5001, '0.0.0.0')
     subscribe = {
         'eventName': 'subscribe',
         'authorization': api_key,
@@ -34,23 +33,22 @@ def on_message(ws, message):
     if data[0] != 'Q' and data[0] != 'T':
         return
     ticker = data[3].upper()
-    last_data = ticker_data[ticker]
-    last_data['type'] = record_type = data[0]
-    last_data['date'] = data[1]
-    last_data['timestamp'] = data[2]
-    last_data['bid'] = bid = data[5]
-    last_data['ask'] = ask = data[7]
-    last_data['trade'] = trade = data[9]
-    last_data['volume'] = volume = data[10]
+    record_type = data[0]
+    date = data[1]
+    timestamp = data[2]
+    bid = data[5]
+    ask = data[7]
+    trade = data[9]
+    volume = data[10]
     if record_type == 'T':
         trade_price_gauges[ticker].set(trade)
         trade_volume_gauges[ticker].set(volume)
     elif record_type == 'Q':
         bid_price_gauges[ticker].set(bid)
         ask_price_gauges[ticker].set(ask)
-    _logger.info(f'{last_data}')
+    line = f'{date};{timestamp};{record_type};{bid};{ask};{trade};{volume}'
     file = ticker_files[ticker]
-    file.write(f"\n{json.dumps(last_data)}")
+    file.write(f'{line}\n')
     file.flush()
     pass
 
@@ -71,9 +69,12 @@ def on_close(ws):
 
 
 def create_file(ticker):
-    file_path = f'/data/{ticker}.data'
+    file_path = f'/data/{ticker}.csv'
     mode = 'wt' if not os.path.exists(file_path) else 'at'
     file = open(file_path, mode)
+    if mode == 'wt':
+        file.write('date;timestamp;type;bid;ask;trade;volume\n')
+        file.flush()
     return file
 
 
@@ -98,7 +99,6 @@ trade_volume_gauges = {ticker: Gauge(f'trade_volume_{ticker}', company) for tick
 bid_price_gauges = {ticker: Gauge(f'bid_price_{ticker}', company) for ticker, company in tickers.items()}
 ask_price_gauges = {ticker: Gauge(f'ask_price_{ticker}', company) for ticker, company in tickers.items()}
 
-ticker_data = {ticker: {'bid': 0.0, 'ask': 0.0, 'trade': 0.0, 'volume': 0} for ticker, company in tickers.items()}
 ticker_files = {}
 
 _logger.info('Initialize web socket app')
