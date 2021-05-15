@@ -38,15 +38,15 @@ class DataPreparator:
                 if quotes is None:
                     continue
                 quotes[f'{ticker}_window'] = \
-                    cls.calculate_windows(
+                    cls.calculate_windows_with_range(
                         quotes,
                         days=days,
                         normalize=True,
                         columns=columns,
                         adjust=provider.adjust_prices)
                 quotes = quotes.rename(columns={'adj_close': f'{ticker}_close'})
-                columns = ['date', f'{ticker}_window', f'{ticker}_close']
-                quotes = quotes[columns].copy()
+                ticker_columns = ['date', f'{ticker}_window', f'{ticker}_close']
+                quotes = quotes[ticker_columns].copy()
                 if all_quotes is None:
                     all_quotes = quotes
                 else:
@@ -122,7 +122,7 @@ class DataPreparator:
                 # prepare data
                 quotes[['buy', 'sell']] = cls.calculate_signals(quotes)
                 quotes['window'] = \
-                    cls.calculate_windows(
+                    cls.calculate_windows_with_range(
                         quotes,
                         days=days,
                         normalize=True,
