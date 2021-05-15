@@ -8,3 +8,4 @@ scrape_configs:
   static_configs:
   - targets:
     - 172.17.0.1:5000
+    - pomalu.ale.jiste.metrics:5001
