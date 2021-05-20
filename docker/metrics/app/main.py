@@ -88,7 +88,8 @@ tickers = {
     'STX': 'Seagate',
     'MU': 'Micron Technology',
     'VKTX': 'Viking Therapeutics',
-    'PDSB': 'PDS Biotechnology'
+    'PDSB': 'PDS Biotechnology',
+    'URTH': 'iShares MSCI World'
 }
 _logger.info(f'Tickers initialized: {[ticker for ticker in tickers.keys()]}')
 
