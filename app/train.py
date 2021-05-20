@@ -176,7 +176,7 @@ if args.train_classifier > 0:
             classifier_features.append(none_samples[i])
             classifier_labels.append(0)
     classifier_features = np.array(classifier_features, dtype=np.float32)
-    classifier_labels = np.array(classifier_labels, dtype=np.int)
+    classifier_labels = np.array(classifier_labels, dtype=np.int32)
     print("Train classifier ...")
     classifier_result = gym.train_classifier(
         'classifier',
