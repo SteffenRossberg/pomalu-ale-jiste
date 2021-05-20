@@ -15,9 +15,122 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 3,
+  "id": 4,
   "links": [],
   "panels": [
+    {
+      "aliasColors": {
+        "Last Price": "dark-purple"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "decimals": 2,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 22,
+      "legend": {
+        "avg": false,
+        "current": true,
+        "max": true,
+        "min": true,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "connected",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.6",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "$$hashKey": "object:364",
+          "alias": "trade_volume_AMD{instance=\"172.17.0.1:5000\", job=\"pomalu.ale.jiste\"}",
+          "yaxis": 2
+        },
+        {
+          "$$hashKey": "object:375",
+          "alias": "Volume",
+          "yaxis": 2
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "trade_price_URTH",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Last Price",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "iShares MSCI World",
+      "tooltip": {
+        "shared": false,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:207",
+          "decimals": 2,
+          "format": "short",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:208",
+          "decimals": 0,
+          "format": "short",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
     {
       "aliasColors": {
         "Last Price": "red"
@@ -34,10 +147,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 6,
         "x": 0,
-        "y": 0
+        "y": 8
       },
       "hiddenSeries": false,
       "id": 2,
@@ -151,10 +264,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 13,
+        "h": 10,
         "w": 2,
         "x": 6,
-        "y": 0
+        "y": 8
       },
       "id": 4,
       "options": {
@@ -213,10 +326,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 6,
         "x": 8,
-        "y": 0
+        "y": 8
       },
       "hiddenSeries": false,
       "id": 7,
@@ -330,10 +443,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 13,
+        "h": 10,
         "w": 2,
         "x": 14,
-        "y": 0
+        "y": 8
       },
       "id": 12,
       "interval": "1s",
@@ -397,10 +510,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 6,
         "x": 16,
-        "y": 0
+        "y": 8
       },
       "hiddenSeries": false,
       "id": 16,
@@ -514,10 +627,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 13,
+        "h": 10,
         "w": 2,
         "x": 22,
-        "y": 0
+        "y": 8
       },
       "id": 15,
       "interval": "1s",
@@ -581,10 +694,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 6,
         "x": 0,
-        "y": 8
+        "y": 15
       },
       "hiddenSeries": false,
       "id": 5,
@@ -691,10 +804,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 6,
         "x": 8,
-        "y": 8
+        "y": 15
       },
       "hiddenSeries": false,
       "id": 8,
@@ -801,10 +914,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 6,
         "x": 16,
-        "y": 8
+        "y": 15
       },
       "hiddenSeries": false,
       "id": 17,
@@ -909,10 +1022,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 6,
         "x": 0,
-        "y": 13
+        "y": 18
       },
       "hiddenSeries": false,
       "id": 10,
@@ -1026,10 +1139,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 13,
+        "h": 10,
         "w": 2,
         "x": 6,
-        "y": 13
+        "y": 18
       },
       "id": 9,
       "options": {
@@ -1088,10 +1201,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 6,
         "x": 8,
-        "y": 13
+        "y": 18
       },
       "hiddenSeries": false,
       "id": 13,
@@ -1205,10 +1318,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 13,
+        "h": 10,
         "w": 2,
         "x": 14,
-        "y": 13
+        "y": 18
       },
       "id": 6,
       "options": {
@@ -1253,7 +1366,7 @@
     },
     {
       "aliasColors": {
-        "Last Price": "purple"
+        "Last Price": "light-purple"
       },
       "bars": false,
       "dashLength": 10,
@@ -1267,10 +1380,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 6,
         "x": 16,
-        "y": 13
+        "y": 18
       },
       "hiddenSeries": false,
       "id": 19,
@@ -1384,10 +1497,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 13,
+        "h": 10,
         "w": 2,
         "x": 22,
-        "y": 13
+        "y": 18
       },
       "id": 18,
       "options": {
@@ -1446,10 +1559,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 6,
         "x": 0,
-        "y": 21
+        "y": 25
       },
       "hiddenSeries": false,
       "id": 21,
@@ -1556,10 +1669,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 6,
         "x": 8,
-        "y": 21
+        "y": 25
       },
       "hiddenSeries": false,
       "id": 14,
@@ -1652,7 +1765,7 @@
     },
     {
       "aliasColors": {
-        "Volume": "purple"
+        "Volume": "light-purple"
       },
       "bars": true,
       "dashLength": 10,
@@ -1666,10 +1779,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 5,
+        "h": 3,
         "w": 6,
         "x": 16,
-        "y": 21
+        "y": 25
       },
       "hiddenSeries": false,
       "id": 20,
@@ -1782,5 +1895,5 @@
   "timezone": "",
   "title": "Trades",
   "uid": "lY7yCYCMk",
-  "version": 1
+  "version": 3
 }

@@ -32,7 +32,7 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 10,
+        "h": 9,
         "w": 11,
         "x": 0,
         "y": 0
@@ -132,7 +132,7 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 10,
+        "h": 9,
         "w": 13,
         "x": 11,
         "y": 0
@@ -232,10 +232,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 10,
+        "h": 9,
         "w": 11,
         "x": 0,
-        "y": 10
+        "y": 9
       },
       "hiddenSeries": false,
       "id": 13,
@@ -332,10 +332,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 10,
+        "h": 9,
         "w": 13,
         "x": 11,
-        "y": 10
+        "y": 9
       },
       "hiddenSeries": false,
       "id": 16,
@@ -432,10 +432,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 10,
+        "h": 9,
         "w": 11,
         "x": 0,
-        "y": 20
+        "y": 18
       },
       "hiddenSeries": false,
       "id": 14,
@@ -532,10 +532,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 10,
+        "h": 9,
         "w": 13,
         "x": 11,
-        "y": 20
+        "y": 18
       },
       "hiddenSeries": false,
       "id": 17,
@@ -648,5 +648,5 @@
   "timezone": "",
   "title": "pomalu, ale jistĕ ...",
   "uid": "lQzG62-Gz",
-  "version": 1
+  "version": 6
 }
