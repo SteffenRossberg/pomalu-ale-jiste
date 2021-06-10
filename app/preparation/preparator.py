@@ -38,12 +38,13 @@ class DataPreparator:
                 if quotes is None:
                     continue
                 quotes[f'{ticker}_window'] = \
-                    cls.calculate_windows_with_range(
+                    cls.calculate_windows(
                         quotes,
                         days=days,
                         normalize=True,
                         columns=columns,
-                        adjust=provider.adjust_prices)
+                        adjust=provider.adjust_prices,
+                        smooth=True)
                 quotes = quotes.rename(columns={'adj_close': f'{ticker}_close'})
                 ticker_columns = ['date', f'{ticker}_window', f'{ticker}_close']
                 quotes = quotes[ticker_columns].copy()
@@ -122,12 +123,13 @@ class DataPreparator:
                 # prepare data
                 quotes[['buy', 'sell']] = cls.calculate_signals(quotes)
                 quotes['window'] = \
-                    cls.calculate_windows_with_range(
+                    cls.calculate_windows(
                         quotes,
                         days=days,
                         normalize=True,
                         columns=columns,
-                        adjust=provider.adjust_prices)
+                        adjust=provider.adjust_prices,
+                        smooth=True)
                 buys = cls.filter_windows_by_signal(quotes, days, 'buy', 'window')
                 sells = cls.filter_windows_by_signal(quotes, days, 'sell', 'window')
                 none = cls.filter_windows_without_signal(quotes, days, 'window')
@@ -146,26 +148,26 @@ class DataPreparator:
                 all_sells,
                 match_threshold=buy_sell_match_threshold)
             print(f'Unique: buys: {np.shape(unique_buys)} - sells: {np.shape(unique_sells)}')
-            sample_buys = cls.find_samples(
-                device,
-                unique_buys,
-                sample_threshold=sample_threshold,
-                match_threshold=sample_match_threshold)
-            sample_sells = cls.find_samples(
-                device,
-                unique_sells,
-                sample_threshold=sample_threshold,
-                match_threshold=sample_match_threshold)
-            print(f'Samples: buys: {np.shape(sample_buys)} - sells: {np.shape(sample_sells)}')
+            # sample_buys = cls.find_samples(
+            #     device,
+            #     unique_buys,
+            #     sample_threshold=sample_threshold,
+            #     match_threshold=sample_match_threshold)
+            # sample_sells = cls.find_samples(
+            #     device,
+            #     unique_sells,
+            #     sample_threshold=sample_threshold,
+            #     match_threshold=sample_match_threshold)
+            # print(f'Samples: buys: {np.shape(sample_buys)} - sells: {np.shape(sample_sells)}')
             buys, _ = cls.extract_unique_samples(
                 device,
-                sample_buys,
+                unique_buys,  # sample_buys,
                 all_none,
                 match_threshold=filter_match_threshold,
                 extract_both=False)
             sells, _ = cls.extract_unique_samples(
                 device,
-                sample_sells,
+                unique_sells,  # sample_sells,
                 all_none,
                 match_threshold=filter_match_threshold,
                 extract_both=False)
@@ -187,7 +189,7 @@ class DataPreparator:
         features = np.concatenate((buys, sells, nones), axis=0)
         labels = np.array([1 for _ in range(len(buys))] +
                           [2 for _ in range(len(sells))] +
-                          [0 for _ in range(len(nones))], dtype=np.int)
+                          [0 for _ in range(len(nones))], dtype=np.int32)
         all_features = features.reshape(
             features.shape[0],
             features.shape[1] * features.shape[2] * features.shape[3])
@@ -326,52 +328,62 @@ class DataPreparator:
         quotes['buy_end'] = quotes['buy_index'].fillna(method='bfill').fillna(quotes['index'].max())
 
     @classmethod
-    def calculate_windows(cls, quotes, days=5, normalize=True, columns=None, adjust=None):
-        normalize_data = cls.normalize_data if normalize else (lambda window: window[columns].values)
-        adjust_data = ((lambda window: adjust(window, columns))
-                       if adjust is not None
-                       else (lambda window: window[columns].values))
-        return cls._calculate_windows(quotes, days, normalize_data, adjust_data, columns)
-
-    @classmethod
-    def calculate_windows_with_range(cls, quotes, days=5, normalize=True, columns=None, adjust=None):
-        normalize_data = (cls.normalize_data_per_column
-                          if normalize
-                          else (lambda window: window[columns].values))
-        adjust_data = ((lambda window: adjust(window, columns))
-                       if adjust is not None
-                       else (lambda window: window[columns].values))
-        return cls._calculate_windows(quotes, days, normalize_data, adjust_data, columns)
-
-    @classmethod
-    def _calculate_windows(cls, quotes, days, normalize_data, adjust_data, columns):
+    def calculate_windows(cls, quotes, days=5, normalize=True, columns=None, adjust=None, smooth=False):
         columns = ['adj_open', 'adj_high', 'adj_low', 'adj_close'] if columns is None else columns
+        process = ((lambda window: cls.swap_window(adjust(window, columns)))
+                   if adjust is not None
+                   else (lambda window: cls.swap_window(window[columns].values)))
+        if normalize:
+            process = cls.decorate(process, cls.normalize_min_max)
+        if smooth:
+            process = cls.decorate(process, cls.smooth_window)
+        return cls._calculate_windows(quotes, days, process, len(columns))
+
+    @classmethod
+    def decorate(cls, inner, outer):
+        return lambda data: outer(inner(data))
+
+    @classmethod
+    def _calculate_windows(cls, quotes, days, process, columns_count):
         quotes = quotes.copy()
-        windows = [(np.array([np.zeros((len(columns), days))], dtype=np.float32)
+        windows = [(np.array([np.zeros((columns_count, days))], dtype=np.float32)
                     if win.shape[0] < days
-                    else normalize_data(np.array([adjust_data(win).tolist()], dtype=np.float32)))
+                    else np.array([process(win).tolist()], dtype=np.float32))
                    for win in quotes.rolling(days)]
         return windows
 
     @staticmethod
-    def normalize_data(data):
-        data = np.swapaxes(data, 1, 2)
+    def normalize_min_max(data):
         max_value = data.max() * 1.0001
         min_value = data.min() * 0.9999
-        data = ((data - min_value) / (max_value - min_value)
-                if max_value - min_value != 0.0
-                else np.zeros(data.shape, dtype=np.float32))
-        return data
-
-    @staticmethod
-    def normalize_data_per_column(data):
-        column_count = data.shape[2]
-        data = np.swapaxes(data, 1, 2)
-        max_value = (data.max(axis=2) * 1.0001).reshape((1, column_count, 1))
-        min_value = (data.min(axis=2) * 0.9999).reshape((1, column_count, 1))
         value_range = (max_value - min_value)
         data = data - min_value
         data = data / value_range
+        return np.array(data, dtype=np.float32)
+
+    @staticmethod
+    def normalize_mean(data):
+        mean_value = data.mean()
+        data = data / mean_value - 1.0
+        min_value = np.abs(data.min() * 0.9999)
+        data = data + min_value
+        return np.array(data, dtype=np.float32)
+
+    @staticmethod
+    def smooth_window(window, rounds=4):
+        data = np.array(window)
+        days = data.shape[1]
+        for _ in range(rounds):
+            for i in range(days - 1):
+                data[0, i + 1] = (data[0, i] + 2 * data[0, i + 1]) / 3.0
+                data[1, i + 1] = (data[1, i] + 2 * data[1, i + 1]) / 3.0
+                data[2, i + 1] = (data[2, i] + 2 * data[2, i + 1]) / 3.0
+                data[3, i + 1] = (data[3, i] + 2 * data[3, i + 1]) / 3.0
+        return data
+
+    @staticmethod
+    def swap_window(data):
+        data = np.swapaxes(data, 0, 1)
         return np.array(data, dtype=np.float32)
 
     @staticmethod
