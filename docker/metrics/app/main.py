@@ -1,6 +1,5 @@
-import prometheus_client
-from prometheus_client import Gauge
 import simplejson as json
+from datetime import datetime
 import os
 import websocket
 import logging
@@ -8,14 +7,14 @@ import logging
 
 def on_open(ws):
     global api_key, tickers, _logger, ticker_files
-    ticker_files = {ticker: create_file(ticker) for ticker in tickers.keys()}
-    prometheus_client.start_http_server(5001, '0.0.0.0')
+    if _last_date.day != datetime.now().day:
+        recreate_files()
     subscribe = {
         'eventName': 'subscribe',
         'authorization': api_key,
         'eventData': {
             'thresholdLevel': 0,
-            'tickers': [ticker for ticker in tickers.keys()]
+            'tickers': tickers
         }
     }
     ws.send(json.dumps(subscribe))
@@ -24,9 +23,11 @@ def on_open(ws):
 
 
 def on_message(ws, message):
-    global trade_price_gauges, trade_volume_gauges, bid_price_gauges, ask_price_gauges, _logger, ticker_files
+    global _logger, ticker_files, _counter, _last_date
     _logger.info(message)
     data = json.loads(message)
+    if _last_date.day != datetime.now().day:
+        recreate_files()
     if 'response' in data or ('data' in data and 'subscriptionId' in data['data']):
         return
     data = data['data']
@@ -36,20 +37,19 @@ def on_message(ws, message):
     record_type = data[0]
     date = data[1]
     timestamp = data[2]
-    bid = data[5]
-    ask = data[7]
-    trade = data[9]
-    volume = data[10]
-    if record_type == 'T':
-        trade_price_gauges[ticker].set(trade)
-        trade_volume_gauges[ticker].set(volume)
-    elif record_type == 'Q':
-        bid_price_gauges[ticker].set(bid)
-        ask_price_gauges[ticker].set(ask)
-    line = f'{date};{timestamp};{record_type};{bid};{ask};{trade};{volume}'
+    bid_price = data[5] if data[5] is not None else ''
+    bid_vol = data[4] if data[4] is not None else ''
+    ask_price = data[7] if data[7] is not None else ''
+    ask_vol = data[8] if data[8] is not None else ''
+    last_price = data[9] if data[9] is not None else ''
+    last_vol = data[10] if data[10] is not None else ''
+    line = f'{date};{timestamp};{record_type};{bid_price};{bid_vol};{ask_price};{ask_vol};{last_price};{last_vol}'
     file = ticker_files[ticker]
     file.write(f'{line}\n')
-    file.flush()
+    _counter += 1
+    if _counter >= 100:
+        file.flush()
+        _counter = 0
     pass
 
 
@@ -63,41 +63,63 @@ def on_close(ws):
     global _logger, ticker_files
     _logger.info('Websocket closed')
     for file in ticker_files.values():
+        file.flush()
         file.close()
     ticker_files = {}
     pass
 
 
-def create_file(ticker):
-    file_path = f'/data/{ticker}.csv'
+def recreate_files():
+    global ticker_files, _last_date
+    date = datetime.now()
+    ticker_files = {ticker: recreate_file(ticker, date) for ticker in tickers}
+    _last_date = date
+
+
+def recreate_file(ticker, last_date):
+    if ticker in ticker_files:
+        file = ticker_files[ticker]
+        file.flush()
+        file.close()
+    directory = f'/data/{last_date:%Y%m%d}'
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+    file_path = f'{directory}/{ticker}.csv'
     mode = 'wt' if not os.path.exists(file_path) else 'at'
     file = open(file_path, mode)
     if mode == 'wt':
-        file.write('date;timestamp;type;bid;ask;trade;volume\n')
+        file.write('date;timestamp;type;bid_price;bid_volume;ask_price;ask_volume;last_price;last_volume\n')
         file.flush()
     return file
 
 
 websocket.enableTrace(True)
 _logger = logging.getLogger('websocket')
-
+_counter = 0
+_last_date = datetime.min
 _logger.info('Initialize tickers')
-tickers = {
-    'AMD': 'AMD',
-    'NVDA': 'NVIDIA',
-    'STX': 'Seagate',
-    'MU': 'Micron Technology',
-    'VKTX': 'Viking Therapeutics',
-    'PDSB': 'PDS Biotechnology'
-}
-_logger.info(f'Tickers initialized: {[ticker for ticker in tickers.keys()]}')
+tickers = [
+    'MMM', 'ABBV', 'ABMD', 'ATVI', 'ADBE', 'AMC', 'AMD',
+    'A', 'AGYS', 'ALB', 'GOOGL', 'AMZN', 'AAL', 'AMGN',
+    'AXP', 'AAPL', 'T', 'BIDU', 'BAC', 'GOLD', 'BIIB',
+    'BB', 'BA', 'BKNG', 'BXP', 'BMY', 'CAT', 'CVX',
+    'CHD', 'CSCO', 'C', 'KO', 'CL', 'DE', 'EBAY',
+    'EIX', 'EA', 'EL', 'EXPE', 'XOM', 'FB', 'FDX',
+    'FSLR', 'FL', 'FCX', 'GE', 'GME', 'GS', 'GRPN',
+    'HD', 'HON', 'IBM', 'ILMN', 'INTC', 'JPM', 'JNJ',
+    'KEY', 'KMI', 'KLAC', 'KHC', 'LMT', 'MA', 'MCD',
+    'MRK', 'MSFT', 'MS', 'NFLX', 'NKE', 'NVDA', 'ORCL',
+    'PGRE', 'PYPL', 'PEP', 'PFE', 'PM', 'PXD', 'PG',
+    'QCOM', 'RTN', 'REGN', 'RMD', 'CRM', 'STX', 'SLB',
+    'SNE', 'SBUX', 'TGT', 'TSLA', 'TEVA', 'TRV', 'TRIP',
+    'TWTR', 'UAA', 'UNH', 'VRSN', 'VZ', 'V', 'WBA',
+    'WMT', 'DIS', 'WFC', 'YELP', 'ZNGA', 'VKTX', 'MU',
+    'PDSB'
+]
+_logger.info(f'Tickers initialized: {", ".join(tickers)}')
 
 _logger.info('Initialize api key, ticker data and gauges')
 api_key = os.getenv('TIINGO_API_KEY')
-trade_price_gauges = {ticker: Gauge(f'trade_price_{ticker}', company) for ticker, company in tickers.items()}
-trade_volume_gauges = {ticker: Gauge(f'trade_volume_{ticker}', company) for ticker, company in tickers.items()}
-bid_price_gauges = {ticker: Gauge(f'bid_price_{ticker}', company) for ticker, company in tickers.items()}
-ask_price_gauges = {ticker: Gauge(f'ask_price_{ticker}', company) for ticker, company in tickers.items()}
 
 ticker_files = {}
 
